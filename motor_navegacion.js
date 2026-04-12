@@ -1,80 +1,98 @@
-// Objeto que almacena el HTML de cada sección
-const secciones = {
-    dashboard: `
-        <div class="contenedor-tabla">
-            <h2>Panel de Control</h2>
-            <p>Aquí verás las estadísticas generales de Visco.</p>
-        </div>
-    `,
-    inventario: `
-        <div class="contenedor-tabla">
-            <div class="encabezado-tabla">
-                <h2>Listado de Equipos Telemáticos</h2>
-                <div class="filtros-fecha">
-                    <input type="date" value="2026-04-10">
-                    <span>al</span>
-                    <input type="date" value="2026-04-10">
-                </div>
-            </div>
-            <table class="tabla-datos">
-                <thead>
-                    <tr>
-                        <th>N°</th>
-                        <th>FMO</th>
-                        <th>Clase</th>
-                        <th>Marca / Serial</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>1</td>
-                        <td><strong>109440</strong></td>
-                        <td>PC</td>
-                        <td>DELL / 5H28DK3</td>
-                        <td><span class="etiqueta-estado operativo">Operativo</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    `,
-    actas: `
-        <div class="contenedor-tabla">
-            <h2>Gestión de Actas de Entrega</h2>
-            <p>Módulo para generar y revisar actas firmadas.</p>
-            <button class="boton-entrar" style="width: 200px; margin-top: 20px;">Crear Nueva Acta</button>
-        </div>
-    `,
-    ordenes: `
-        <div class="contenedor-tabla">
-            <h2>Órdenes de Compra (PDF/Imágenes)</h2>
-            <p>Historial de documentos cargados en PostgreSQL.</p>
-        </div>
-    `,
-    config: `
-        <div class="contenedor-tabla">
-            <h2>Configuración del Sistema</h2>
-            <p>Ajustes de usuario y base de datos.</p>
-        </div>
-    `
-};
-
 /**
- * Función para cambiar el contenido sin recargar la página
- * @param {string} nombreSeccion - Clave del objeto 'secciones'
- * @param {HTMLElement} elemento - El enlace clickeado para cambiar la clase 'activo'
+ * Función principal para gestionar la navegación dinámica
  */
-function cambiarSeccion(nombreSeccion, elemento) {
-    // 1. Obtener el contenedor
+async function cambiarSeccion(nombreSeccion, elemento) {
     const contenedor = document.getElementById('contenedor-dinamico');
     
-    // 2. Inyectar el HTML correspondiente
-    contenedor.innerHTML = secciones[nombreSeccion];
-
-    // 3. Gestionar la clase 'activo' en el menú
+    // 1. Gestionar la clase 'activo' en el menú lateral
     const enlaces = document.querySelectorAll('.menu-navegacion a');
     enlaces.forEach(link => link.classList.remove('activo'));
-    
-    // 4. Marcar el actual como activo
     elemento.classList.add('activo');
+
+    // 2. Lógica de carga según la sección seleccionada
+    switch (nombreSeccion) {
+        case 'inventario':
+            await cargarInventario(contenedor);
+            break;
+        case 'dashboard':
+            contenedor.innerHTML = `
+                <div class="contenedor-tabla">
+                    <h2>Panel de Control</h2>
+                    <p>Resumen general del estado de los equipos en Visco.</p>
+                </div>`;
+            break;
+        case 'actas':
+            contenedor.innerHTML = `
+                <div class="contenedor-tabla">
+                    <h2>Actas de Entrega</h2>
+                    <p>Módulo para la generación y firma digital de actas FMO.</p>
+                </div>`;
+            break;
+        case 'ordenes':
+            contenedor.innerHTML = `
+                <div class="contenedor-tabla">
+                    <h2>Órdenes de Compra</h2>
+                    <p>Historial de documentos y facturación telemática.</p>
+                </div>`;
+            break;
+        case 'config':
+            contenedor.innerHTML = `
+                <div class="contenedor-tabla">
+                    <h2>Configuración</h2>
+                    <p>Ajustes de usuario y parámetros de la base de datos visco_bd.</p>
+                </div>`;
+            break;
+        default:
+            contenedor.innerHTML = '<h2>Sección no encontrada</h2>';
+    }
+}
+
+/**
+ * Función específica para traer datos reales desde PostgreSQL
+ */
+async function cargarInventario(contenedor) {
+    contenedor.innerHTML = '<p>Cargando datos de Visco...</p>';
+
+    try {
+        const respuesta = await fetch('/api/equipos');
+        const equipos = await respuesta.json();
+
+        let tablaHTML = `
+            <div class="contenedor-tabla">
+                <div class="encabezado-tabla">
+                    <h2>Inventario Real de Equipos</h2>
+                    <div class="filtros-fecha">
+                        <input type="date" value="2026-04-12">
+                    </div>
+                </div>
+                <table class="tabla-datos">
+                    <thead>
+                        <tr>
+                            <th>FMO</th>
+                            <th>Marca</th>
+                            <th>Serial</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        equipos.forEach(equipo => {
+            tablaHTML += `
+                <tr>
+                    <td><strong>${equipo.fmo || 'N/A'}</strong></td>
+                    <td>${equipo.marca}</td>
+                    <td>${equipo.serial}</td>
+                    <td><span class="etiqueta-estado ${equipo.estado.toLowerCase() === 'operativo' ? 'operativo' : 'danado'}">${equipo.estado}</span></td>
+                </tr>
+            `;
+        });
+
+        tablaHTML += `</tbody></table></div>`;
+        contenedor.innerHTML = tablaHTML;
+
+    } catch (error) {
+        console.error("Error:", error);
+        contenedor.innerHTML = '<p>Error al conectar con el servidor Express.</p>';
+    }
 }
