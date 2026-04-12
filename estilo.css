@@ -80,19 +80,65 @@ body {
     margin-bottom: 30px;
 }
 
-.caja-busqueda {
-    background: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    width: 450px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+/* Panel de Herramientas Interno */
+.panel-herramientas {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 20px;
 }
 
-.caja-busqueda input {
+.grupo-busqueda {
+    display: flex;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.caja-input-inventario {
+    background: white;
+    padding: 10px 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #e0e6ed;
+    flex-grow: 1;
+    max-width: 500px;
+}
+
+.caja-input-inventario input {
     border: none;
     outline: none;
-    margin-left: 10px;
-    width: 85%;
+    width: 100%;
+}
+
+.select-estetico {
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #e0e6ed;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Botón Reporte */
+.btn-reporte-premium {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-reporte-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
 /* Tabla de Datos */
@@ -101,31 +147,6 @@ body {
     padding: 25px;
     border-radius: 20px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-}
-
-.encabezado-tabla {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-
-.pestanas {
-    margin-bottom: 20px;
-    border-bottom: 1px solid #eee;
-}
-
-.pestana {
-    background: none;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-    color: #7f8c8d;
-}
-
-.pestana.activa {
-    color: var(--color-acento);
-    border-bottom: 2px solid var(--color-acento);
-    font-weight: bold;
 }
 
 .tabla-datos {
@@ -138,11 +159,22 @@ body {
     color: #95a5a6;
     font-size: 0.85rem;
     padding: 15px;
+    border-bottom: 2px solid #f0f4f8;
 }
 
 .tabla-datos td {
     padding: 15px;
     border-bottom: 1px solid #f9f9f9;
+}
+
+.info-doble {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-doble small {
+    color: #7f8c8d;
+    font-size: 0.75rem;
 }
 
 /* Estados */
@@ -151,60 +183,123 @@ body {
     border-radius: 15px;
     font-size: 0.75rem;
     font-weight: bold;
+    text-transform: capitalize;
 }
 
 .operativo { background: #e8f8f5; color: #27ae60; }
 .danado { background: #fdedec; color: #e74c3c; }
 
-.paginacion {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.paginacion button {
-    padding: 8px 15px;
-    border: 1px solid #eee;
-    background: white;
-    cursor: pointer;
-    border-radius: 5px;
-}
-
-.paginacion button.activa {
-    background: var(--color-lateral);
-    color: white;
-}
-
-/* Estilo del Botón de Cerrar Sesión */
+/* Botón Salir */
 .boton-salir {
-    background-color: rgba(231, 76, 60, 0.1); /* Un rojo muy suave y transparente */
-    color: #e74c3c; /* Color rojo elegante */
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
     border: 1px solid rgba(231, 76, 60, 0.3);
     padding: 12px 20px;
     border-radius: 12px;
     cursor: pointer;
-    font-size: 0.9rem;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 10px; /* Espacio entre el icono y el texto */
+    gap: 10px;
     transition: all 0.3s ease;
-    margin-top: auto; /* Empuja el botón hacia el final de la barra lateral */
+    margin-top: auto;
     width: 100%;
 }
 
-.boton-salir i {
+.boton-salir:hover {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-mini {
+    background: none;
+    border: none;
+    color: var(--color-acento);
+    cursor: pointer;
     font-size: 1.1rem;
 }
 
-/* Efecto al pasar el mouse (Hover) */
-.boton-salir:hover {
-    background-color: #e74c3c; /* Se vuelve rojo sólido */
-    color: white; /* El texto e icono pasan a blanco */
-    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
-    transform: translateY(-2px); /* Pequeño salto hacia arriba */
+.error-box {
+    background: #fdedec;
+    color: #e74c3c;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
 }
 
-/* Efecto al hacer clic */
-.boton-salir:active {
-    transform: translateY(0);
+
+.contenedor-formulario {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.grid-formulario {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Dos columnas */
+    gap: 30px;
+}
+
+.seccion-form h3 {
+    font-size: 1rem;
+    color: var(--color-lateral);
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--color-fondo);
+    padding-bottom: 5px;
+}
+
+.campos-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.campo label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #7f8c8d;
+}
+
+.campo input, .campo select, textarea {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #e0e6ed;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.full-width {
+    grid-column: span 2;
+}
+
+.form-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-secundario {
+    background: #ecf0f1;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #7f8c8d;
+}
+
+
+textarea[name="observaciones"] {
+    width: 100%;            /* Ocupa el 100% del ancho de su contenedor (el span 2) */
+    min-width: 100%;        /* Evita que cualquier otra regla lo encoja */
+    display: block;         /* Asegura que se comporte como un bloque independiente */
+    box-sizing: border-box; /* Incluye el padding y bordes en el cálculo del ancho */
 }
