@@ -16,11 +16,11 @@
                 <p>Pasante IT</p>
             </div>
             <nav class="menu-navegacion">
-                <a href="#"><i class="fa-solid fa-chart-line"></i> Panel de Control</a>
-                <a href="#" class="activo"><i class="fa-solid fa-boxes-stacked"></i> Inventario</a>
-                <a href="#"><i class="fa-solid fa-file-invoice"></i> Actas de Entrega</a>
-                <a href="#"><i class="fa-solid fa-cart-shopping"></i> Órdenes de Compra</a>
-                <a href="#"><i class="fa-solid fa-gear"></i> Configuración</a>
+                <a href="#" onclick="cambiarSeccion('dashboard', this)"><i class="fa-solid fa-chart-line"></i> Panel de Control</a>
+                <a href="#" onclick="cambiarSeccion('inventario', this)" class="activo"><i class="fa-solid fa-boxes-stacked"></i> Inventario</a>
+                <a href="#" onclick="cambiarSeccion('actas', this)"><i class="fa-solid fa-file-invoice"></i> Actas de Entrega</a>
+                <a href="#" onclick="cambiarSeccion('ordenes', this)"><i class="fa-solid fa-cart-shopping"></i> Órdenes de Compra</a>
+                <a href="#" onclick="cambiarSeccion('config', this)"><i class="fa-solid fa-gear"></i> Configuración</a>
             </nav>
            <button class="boton-salir" onclick="window.location.href='login.html'">
                 <i class="fa-solid fa-right-from-bracket"></i> 
@@ -40,65 +40,50 @@
                 </div>
             </header>
 
-            <section class="contenedor-tabla">
-                <div class="encabezado-tabla">
-                    <h2>Listado de Equipos Telemáticos</h2>
-                    <div class="filtros-fecha">
-                        <input type="date" value="2026-04-10">
-                        <span>al</span>
-                        <input type="date" value="2026-04-10">
+            <section id="contenedor-dinamico">
+                <div class="contenedor-tabla">
+                    <div class="encabezado-tabla">
+                        <h2>Listado de Equipos Telemáticos</h2>
+                        <div class="filtros-fecha">
+                            <input type="date" value="2026-04-10">
+                            <span>al</span>
+                            <input type="date" value="2026-04-10">
+                        </div>
                     </div>
-                </div>
-
-                <div class="pestanas">
-                    <button class="pestana activa">Todos</button>
-                    <button class="pestana">Operativos</button>
-                    <button class="pestana">Dañados</button>
-                    <button class="pestana">En Reparación</button>
-                </div>
-
-                <table class="tabla-datos">
-                    <thead>
-                        <tr>
-                            <th>N°</th>
-                            <th>FMO</th>
-                            <th>Clase</th>
-                            <th>Marca / Serial</th>
-                            <th>CECO</th>
-                            <th>Descripción CECO</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>1</td>
-                            <td><strong>109440</strong></td>
-                            <td>PC</td>
-                            <td>DELL / 5H28DK3</td>
-                            <td>21020301</td>
-                            <td>PLANIFICACIÓN Y CONTROL</td>
-                            <td><span class="etiqueta-estado operativo">Operativo</span></td>
-                        </tr>
-                        <tr>
-                            <td>2</td>
-                            <td><strong>109552</strong></td>
-                            <td>Monitor</td>
-                            <td>SAMSUNG / SN2033</td>
-                            <td>21020301</td>
-                            <td>PLANIFICACIÓN Y CONTROL</td>
-                            <td><span class="etiqueta-estado danado">Dañado</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-                
-                <div class="paginacion">
-                    <button>Anterior</button>
-                    <button class="activa">1</button>
-                    <button>2</button>
-                    <button>Siguiente</button>
+                    <div class="pestanas">
+                        <button class="pestana activa">Todos</button>
+                        <button class="pestana">Operativos</button>
+                        <button class="pestana">Dañados</button>
+                        <button class="pestana">En Reparación</button>
+                    </div>
+                    <table class="tabla-datos">
+                        <thead>
+                            <tr>
+                                <th>N°</th>
+                                <th>FMO</th>
+                                <th>Clase</th>
+                                <th>Marca / Serial</th>
+                                <th>CECO</th>
+                                <th>Descripción CECO</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td><strong>109440</strong></td>
+                                <td>PC</td>
+                                <td>DELL / 5H28DK3</td>
+                                <td>21020301</td>
+                                <td>PLANIFICACIÓN Y CONTROL</td>
+                                <td><span class="etiqueta-estado operativo">Operativo</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </main>
     </div>
+    <script src="motor_navegacion.js"></script>
 </body>
 </html>
