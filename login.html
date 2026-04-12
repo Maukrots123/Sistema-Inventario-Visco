@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso - Sistema de Inventario Visco</title>
+    <link rel="stylesheet" href="estilo_2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="contenedor-login">
+        <div class="tarjeta-login">
+            <div class="encabezado-login">
+                <div class="logo-circulo">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+                <h1>Bienvenido</h1>
+                <p>Ingresa tus credenciales para acceder al sistema de inventario.</p>
+            </div>
+
+            <form class="formulario-acceso">
+                <div class="grupo-entrada">
+                    <label for="usuario">Usuario o Correo</label>
+                    <div class="campo-icono">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="usuario" placeholder="Ej: mauricio.a" required>
+                    </div>
+                </div>
+
+                <div class="grupo-entrada">
+                    <label for="clave">Contraseña</label>
+                    <div class="campo-icono">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="clave" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <div class="opciones-secundarias">
+                    <label class="recordarme">
+                        <input type="checkbox"> Recordar sesión
+                    </label>
+                    <a href="#" class="olvido-clave">¿Olvidaste tu contraseña?</a>
+                </div>
+
+                <button type="submit" class="boton-entrar" href="index.html">
+                    Entrar al Sistema
+                </button>
+            </form>
+
+            <footer class="pie-login">
+                <p>&copy; 2026 Visco - Control de Inventario FMO</p>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

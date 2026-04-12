@@ -1,0 +1,210 @@
+:root {
+    --color-fondo: #f0f4f8;
+    --color-lateral: #2c3e50;
+    --color-acento: #3498db;
+    --texto-principal: #333;
+    --blanco: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+body {
+    background-color: var(--color-fondo);
+}
+
+.contenedor-principal {
+    display: flex;
+    height: 100vh;
+}
+
+/* Barra Lateral */
+.barra-lateral {
+    width: 260px;
+    background-color: var(--color-lateral);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 20px;
+}
+
+.perfil-usuario {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.avatar {
+    width: 60px;
+    height: 60px;
+    background: var(--color-acento);
+    border-radius: 50%;
+    margin: 0 auto 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.menu-navegacion {
+    flex-grow: 1;
+}
+
+.menu-navegacion a {
+    display: block;
+    color: #bdc3c7;
+    text-decoration: none;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 5px;
+}
+
+.menu-navegacion a.activo, .menu-navegacion a:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: white;
+}
+
+/* Área de Trabajo */
+.area-trabajo {
+    flex-grow: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+.barra-superior {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+}
+
+.caja-busqueda {
+    background: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    width: 450px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.caja-busqueda input {
+    border: none;
+    outline: none;
+    margin-left: 10px;
+    width: 85%;
+}
+
+/* Tabla de Datos */
+.contenedor-tabla {
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.encabezado-tabla {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.pestanas {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.pestana {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: #7f8c8d;
+}
+
+.pestana.activa {
+    color: var(--color-acento);
+    border-bottom: 2px solid var(--color-acento);
+    font-weight: bold;
+}
+
+.tabla-datos {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-datos th {
+    text-align: left;
+    color: #95a5a6;
+    font-size: 0.85rem;
+    padding: 15px;
+}
+
+.tabla-datos td {
+    padding: 15px;
+    border-bottom: 1px solid #f9f9f9;
+}
+
+/* Estados */
+.etiqueta-estado {
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.operativo { background: #e8f8f5; color: #27ae60; }
+.danado { background: #fdedec; color: #e74c3c; }
+
+.paginacion {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.paginacion button {
+    padding: 8px 15px;
+    border: 1px solid #eee;
+    background: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.paginacion button.activa {
+    background: var(--color-lateral);
+    color: white;
+}
+
+/* Estilo del Botón de Cerrar Sesión */
+.boton-salir {
+    background-color: rgba(231, 76, 60, 0.1); /* Un rojo muy suave y transparente */
+    color: #e74c3c; /* Color rojo elegante */
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    padding: 12px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Espacio entre el icono y el texto */
+    transition: all 0.3s ease;
+    margin-top: auto; /* Empuja el botón hacia el final de la barra lateral */
+    width: 100%;
+}
+
+.boton-salir i {
+    font-size: 1.1rem;
+}
+
+/* Efecto al pasar el mouse (Hover) */
+.boton-salir:hover {
+    background-color: #e74c3c; /* Se vuelve rojo sólido */
+    color: white; /* El texto e icono pasan a blanco */
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    transform: translateY(-2px); /* Pequeño salto hacia arriba */
+}
+
+/* Efecto al hacer clic */
+.boton-salir:active {
+    transform: translateY(0);
+}
