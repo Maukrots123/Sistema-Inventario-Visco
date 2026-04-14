@@ -83,46 +83,44 @@ app.get('/api/responsables', async (req, res) => {
 
 // RUTA PARA REGISTRAR UN NUEVO EQUIPO
 app.post('/api/equipos', async (req, res) => {
-    // 1. Extraemos solo lo que realmente existe en tu tabla actual
-    const {
-        fmo, serial, tipo, clase, marca, modelo,
-        departamento, responsable, ceco,
-        estado, observaciones
-    } = req.body;
+    const { fmo, serial, tipo, clase, marca, modelo, departamento, responsable, estado, observaciones } = req.body;
 
     try {
-        // 2. Nota que eliminamos id_gerencia (porque es redundante) y subtipos
-        // Contamos los parámetros: fmo($1), serial($2)... hasta usuario($12)
-        const query = `
+        // --- PROCESO DINÁMICO PARA LA CLASE ---
+        let idClaseFinal = null;
+
+        if (clase && clase.trim() !== "") {
+            // 1. Intentamos buscar la clase por nombre
+            const buscarClase = await pool.query('SELECT id FROM clase_equipo WHERE LOWER(nombre) = LOWER($1)', [clase.trim()]);
+            
+            if (buscarClase.rows.length > 0) {
+                // 2. Si existe, tomamos su ID
+                idClaseFinal = buscarClase.rows[0].id;
+            } else {
+                // 3. Si no existe, la CREAMOS dinámicamente
+                const nuevaClase = await pool.query('INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', [clase.trim()]);
+                idClaseFinal = nuevaClase.rows[0].id;
+            }
+        }
+
+        // --- INSERCIÓN DEL EQUIPO ---
+        const queryEquipo = `
             INSERT INTO equipo (
                 fmo, serial, tipo, id_clase, marca, modelo, 
-                id_departamento, id_responsable, centro_costo,
-                estado, observacion, fecha_modificacion, usuario_modificacion
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, $12)
+                id_departamento, id_responsable, estado, 
+                observacion, fecha_modificacion
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
             RETURNING *;
         `;
 
-        const valores = [
-            fmo,          
-            serial,        
-            tipo,         
-            clase,         
-            marca,         
-            modelo,        
-            departamento,  
-            responsable,   
-            ceco,          
-            estado,        
-            observaciones, 
-            'Mauricio A.'  
-        ];
+        const valores = [fmo, serial, tipo, idClaseFinal, marca, modelo, departamento, responsable, estado, observaciones];
+        const resultado = await pool.query(queryEquipo, valores);
 
-        const resultado = await pool.query(query, valores);
-        res.status(201).json({ mensaje: 'Registro guardado con éxito', data: resultado.rows[0] });
-        
+        res.status(201).json({ mensaje: 'Equipo y clase registrados con éxito', data: resultado.rows[0] });
+
     } catch (err) {
-        console.error("Error al insertar:", err.message);
-        res.status(500).json({ error: 'Error interno: ' + err.message });
+        console.error(err.message);
+        res.status(500).json({ error: 'Error en el proceso dinámico: ' + err.message });
     }
 });
 

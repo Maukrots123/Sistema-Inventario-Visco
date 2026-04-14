@@ -284,6 +284,93 @@ async function cargarOpcionesFormulario() {
     }
 }
 
+// Agrega esto después de cargar el formulario de registro
+function activarEscuchaFormulario() {
+    const form = document.getElementById('form-registro-equipo');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const datos = {
+            fmo: formData.get('fmo'),
+            serial: formData.get('serial'),
+            marca: formData.get('marca'),
+            clase: formData.get('clase'), // Asegúrate que sea el ID
+            tipo: formData.get('tipo'),
+            gerencia: formData.get('gerencia'),
+            departamento: formData.get('departamento'),
+            responsable: formData.get('responsable'),
+            estado: formData.get('estado'),
+            observaciones: formData.get('observaciones')
+        };
+
+        try {
+            const respuesta = await fetch('/api/equipos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            if (respuesta.ok) {
+                alert("✅ Equipo registrado exitosamente en Visco_BD");
+                form.reset();
+                // Opcional: Redirigir al inventario para ver el cambio
+                // cambiarSeccion('inventario', document.querySelector('[onclick*="inventario"]'));
+            } else {
+                const err = await respuesta.json();
+                alert("❌ Error: " + err.error);
+            }
+        } catch (error) {
+            console.error("Error en la petición:", error);
+        }
+    });
+}
+
+// Coloca esto al final de tu motor_navegacion.js, FUERA de cualquier función
+document.addEventListener('submit', async (e) => {
+    // Verificamos si el formulario que se está enviando es el de registro
+    if (e.target && e.target.id === 'form-registro-equipo') {
+        e.preventDefault();
+        console.log("Enviando formulario..."); // Si ves esto en F12, vamos bien
+
+        const formData = new FormData(e.target);
+        const datos = {
+            fmo: formData.get('fmo'),
+            serial: formData.get('serial'),
+            tipo: formData.get('tipo'),
+            clase: formData.get('clase'),
+            marca: formData.get('marca'),
+            modelo: formData.get('modelo'),
+            departamento: formData.get('departamento'),
+            responsable: formData.get('responsable'),
+            estado: formData.get('estado'),
+            observaciones: formData.get('observaciones')
+        };
+
+        try {
+            const respuesta = await fetch('/api/equipos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            const resultado = await respuesta.json();
+
+            if (respuesta.ok) {
+                alert("✅ " + resultado.mensaje);
+                e.target.reset(); // Limpia el formulario
+            } else {
+                alert("❌ Error: " + resultado.error);
+            }
+        } catch (error) {
+            console.error("Error en la petición:", error);
+            alert("❌ No se pudo conectar con el servidor");
+        }
+    }
+});
+
 function generarPDF() {
     alert("Iniciando exportación de reporte detallado...");
 }
