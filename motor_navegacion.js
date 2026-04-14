@@ -17,6 +17,7 @@ async function cambiarSeccion(nombreSeccion, elemento) {
         case 'registro':
             titulo.innerText = "Registro de Nuevo Equipo";
             cargarFormularioRegistro(contenedor);
+            await cargarOpcionesFormulario();
             break;
         case 'dashboard':
             titulo.innerText = "Panel de Control";
@@ -64,10 +65,7 @@ function cargarFormularioRegistro(contenedor) {
                             <label>Tipo</label>
                             <input type="text" name="tipo" placeholder="Ej: Laptop">
                         </div>
-                        <div class="campo">
-                            <label>Subtipo</label>
-                            <input type="text" name="subtipo" placeholder="Ej: Portátil Administrativa">
-                        </div>
+                        
                     </div>
                 </div>
 
@@ -78,8 +76,6 @@ function cargarFormularioRegistro(contenedor) {
                             <label>Gerencia</label>
                             <select name="gerencia" id="reg-gerencia">
                                 <option value="">Seleccione Gerencia</option>
-                                <option value="TI">Tecnología de Información</option>
-                                <option value="Mant">Mantenimiento</option>
                             </select>
                         </div>
                         <div class="campo">
@@ -88,9 +84,12 @@ function cargarFormularioRegistro(contenedor) {
                                 <option value="">Seleccione Departamento</option>
                             </select>
                         </div>
+
                         <div class="campo">
                             <label>Asignado a:</label>
-                            <input type="text" name="asignado" placeholder="Nombre del responsable">
+                            <select name="responsable" id="reg-responsable">
+                                <option value="">Seleccione Responsable</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -102,10 +101,7 @@ function cargarFormularioRegistro(contenedor) {
                             <label>Centro de Costo (CECO)</label>
                             <input type="text" name="centro_costo" placeholder="Código CECO">
                         </div>
-                        <div class="campo">
-                            <label>Descripción CECO</label>
-                            <input type="text" name="descripcion_ceco">
-                        </div>
+                        
                         <div class="campo">
                             <label>Estado Actual</label>
                             <select name="estado">
@@ -173,7 +169,6 @@ async function cargarInventario(contenedor) {
                             <tr>
                                 <th>Clase</th>
                                 <th>Tipo</th>
-                                <th>Subtipo</th>
                                 <th>FMO</th>
                                 <th>Serial</th>
                                 <th>Marca</th>
@@ -182,7 +177,6 @@ async function cargarInventario(contenedor) {
                                 <th>Gerencia</th>
                                 <th>Departamento</th>
                                 <th>Centro Costo</th>
-                                <th>Desc. CECO</th>
                                 <th>Observaciones</th>
                                 <th>Fecha Modif.</th>
                                 <th>Usuario Modif.</th>
@@ -198,7 +192,6 @@ async function cargarInventario(contenedor) {
                 <tr>
                     <td>${equipo.clase || '-'}</td>
                     <td>${equipo.tipo || '-'}</td>
-                    <td>${equipo.subtipo || '-'}</td>
                     <td><strong>${equipo.fmo || 'S/N'}</strong></td>
                     <td>${equipo.serial || '-'}</td>
                     <td>${equipo.marca || '-'}</td>
@@ -207,7 +200,6 @@ async function cargarInventario(contenedor) {
                     <td>${equipo.gerencia || '-'}</td>
                     <td>${equipo.departamento || '-'}</td>
                     <td>${equipo.centro_costo || '-'}</td>
-                    <td>${equipo.descripcion_ceco || '-'}</td>
                     <td title="${equipo.observaciones || ''}">
                         <div style="max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             ${equipo.observaciones || '-'}
@@ -228,6 +220,67 @@ async function cargarInventario(contenedor) {
     } catch (error) {
         console.error(error);
         contenedor.innerHTML = '<div class="error-box"><i class="fa-solid fa-triangle-exclamation"></i> Error al cargar datos del inventario.</div>';
+    }
+}
+
+/**
+ * Variables globales para almacenar los catálogos y filtrar localmente
+ */
+let catalogoDepartamentos = [];
+
+async function cargarOpcionesFormulario() {
+    const selGerencia = document.getElementById('reg-gerencia');
+    const selDepto = document.getElementById('reg-departamento');
+    const selResp = document.getElementById('reg-responsable');
+
+    try {
+        const [gerencias, departamentos, responsables] = await Promise.all([
+            fetch('/api/gerencias').then(r => r.json()),
+            fetch('/api/departamentos').then(r => r.json()),
+            fetch('/api/responsables').then(r => r.json())
+        ]);
+
+        catalogoDepartamentos = departamentos; // Guardamos para filtrar luego
+
+        // 1. Llenar Gerencias
+        selGerencia.innerHTML = '<option value="">Seleccione Gerencia</option>';
+        gerencias.forEach(g => {
+            selGerencia.innerHTML += `<option value="${g.id_gerencia}">${g.nombre_gerencia}</option>`;
+        });
+
+        // 2. Llenar Responsables (Nombres, no IDs)
+        selResp.innerHTML = '<option value="">Seleccione Responsable</option>';
+        responsables.forEach(r => {
+            selResp.innerHTML += `<option value="${r.id}">${r.nombre} ${r.apellido}</option>`;
+        });
+
+        // --- LÓGICA DE FILTRADO DINÁMICO ---
+
+        // Evento cuando cambia la Gerencia
+        selGerencia.addEventListener('change', (e) => {
+            const idGerenciaSel = e.target.value;
+            selDepto.innerHTML = '<option value="">Seleccione Departamento</option>';
+            
+            // Filtramos los departamentos que pertenecen a esa gerencia
+            const filtrados = catalogoDepartamentos.filter(d => d.id_gerencia == idGerenciaSel);
+            
+            filtrados.forEach(d => {
+                selDepto.innerHTML += `<option value="${d.id_departamento}">${d.nombre_departamento}</option>`;
+            });
+        });
+
+        // Evento cuando cambia el Departamento (Autocompletar Gerencia si se entra por aquí)
+        selDepto.addEventListener('change', (e) => {
+            const idDeptoSel = e.target.value;
+            const deptoEncontrado = catalogoDepartamentos.find(d => d.id_departamento == idDeptoSel);
+            
+            if (deptoEncontrado && !selGerencia.value) {
+                selGerencia.value = deptoEncontrado.id_gerencia;
+            }
+        });
+
+    } catch (error) {
+        console.error("Error en la carga dinámica:", error);
     }
 }
 
