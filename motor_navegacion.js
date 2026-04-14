@@ -245,7 +245,7 @@ async function cargarOpcionesFormulario() {
         // 1. Llenar Gerencias
         selGerencia.innerHTML = '<option value="">Seleccione Gerencia</option>';
         gerencias.forEach(g => {
-            selGerencia.innerHTML += `<option value="${g.id_gerencia}">${g.nombre_gerencia}</option>`;
+            selGerencia.innerHTML += `<option value="${g.id}">${g.nombre}</option>`;
         });
 
         // 2. Llenar Responsables (Nombres, no IDs)
@@ -262,20 +262,20 @@ async function cargarOpcionesFormulario() {
             selDepto.innerHTML = '<option value="">Seleccione Departamento</option>';
             
             // Filtramos los departamentos que pertenecen a esa gerencia
-            const filtrados = catalogoDepartamentos.filter(d => d.id_gerencia == idGerenciaSel);
+            const filtrados = catalogoDepartamentos.filter(d => d.id == idGerenciaSel);
             
             filtrados.forEach(d => {
-                selDepto.innerHTML += `<option value="${d.id_departamento}">${d.nombre_departamento}</option>`;
+                selDepto.innerHTML += `<option value="${d.id}">${d.nombre}</option>`;
             });
         });
 
         // Evento cuando cambia el Departamento (Autocompletar Gerencia si se entra por aquí)
         selDepto.addEventListener('change', (e) => {
             const idDeptoSel = e.target.value;
-            const deptoEncontrado = catalogoDepartamentos.find(d => d.id_departamento == idDeptoSel);
+            const deptoEncontrado = catalogoDepartamentos.find(d => d.id == idDeptoSel);
             
             if (deptoEncontrado && !selGerencia.value) {
-                selGerencia.value = deptoEncontrado.id_gerencia;
+                selGerencia.value = deptoEncontrado.id;
             }
         });
 
