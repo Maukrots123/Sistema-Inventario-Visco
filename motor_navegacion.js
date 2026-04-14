@@ -1,6 +1,4 @@
-/**
- * Función principal para gestionar la navegación dinámica
- */
+
 async function cambiarSeccion(nombreSeccion, elemento) {
     const contenedor = document.getElementById('contenedor-dinamico');
     const titulo = document.getElementById('titulo-seccion');
@@ -374,3 +372,30 @@ document.addEventListener('submit', async (e) => {
 function generarPDF() {
     alert("Iniciando exportación de reporte detallado...");
 }
+
+// ... (Tus funciones cambiarSeccion, cargarInventario, etc.) ...
+
+// ESTO VA AL FINAL DE TU ARCHIVO .JS
+window.onload = () => {
+    // 1. Buscamos el botón de Panel de Control en tu menú lateral
+    const enlaceDashboard = Array.from(document.querySelectorAll('.menu-navegacion a'))
+                                 .find(a => a.innerText.includes('Panel de Control') || 
+                                            (a.getAttribute('onclick') && a.getAttribute('onclick').includes('dashboard')));
+
+    // 2. Si lo encuentra, ejecuta la navegación. Si no, llena el contenedor manualmente.
+    if (enlaceDashboard) {
+        cambiarSeccion('dashboard', enlaceDashboard);
+    } else {
+        // Plan B: Llenado manual por si el menú aún no responde
+        const contenedor = document.getElementById('contenedor-dinamico');
+        const titulo = document.getElementById('titulo-seccion');
+        if(titulo) titulo.innerText = "Panel de Control";
+        if(contenedor) {
+            contenedor.innerHTML = `
+                <div class="contenedor-tabla">
+                    <h2>Resumen General</h2>
+                    <p>Bienvenido al sistema Visco. Cargando estadísticas...</p>
+                </div>`;
+        }
+    }
+};
