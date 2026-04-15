@@ -789,3 +789,32 @@ textarea[name="observaciones"] {
     height: 100%; 
     transition: width 1s ease-in-out; 
 }
+
+
+/* GRAFICAS DEL PANEL DE CONTROL*/
+.chart-box {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    height: 300px; /* IMPORTANTE: Da altura para que el canvas se dibuje */
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-box canvas {
+    flex-grow: 1;
+    max-height: 250px;
+}
+
+
+.chart-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+canvas {
+    max-height: 280px; /* Controla el alto para que no sea infinito */
+    width: 100% !important;
+}

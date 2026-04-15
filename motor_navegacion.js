@@ -25,7 +25,9 @@ async function cambiarSeccion(nombreSeccion, elemento) {
                 cargarInterfazPanel(contenedor);
                 
                 // 4. Ejecutamos la lógica (ahora sí hay datos seguros en todosLosEquipos)
-                inicializarLogicaPanel();
+                setTimeout(() => {
+                    inicializarLogicaPanel();
+                }, 50);
                 
             } catch (error) {
                 console.error("Error en Dashboard-Visco:", error);
@@ -74,31 +76,31 @@ function cargarInterfazPanel(contenedor) {
 
             <div class="main-stats-row">
                 <div class="chart-container">
-                    <h3><i class="fa-solid fa-chart-simple"></i> Distribución por Clase</h3>
-                    <div id="stats-clases-list" class="clases-list">
-                        <p class="loading-text">Procesando categorías...</p>
+                    <div class="chart-box" style="margin-bottom: 25px;">
+                        <h3><i class="fa-solid fa-chart-simple"></i> Flujo de Inventario</h3>
+                        <canvas id="canvas-barras"></canvas>
+                    </div>
+
+                    <div class="chart-box">
+                        <h3><i class="fa-solid fa-chart-pie"></i> Estado General</h3>
+                        <canvas id="canvas-dona"></canvas>
                     </div>
                 </div>
 
                 <div class="quick-actions">
                     <h3>Acciones Rápidas</h3>
-                    
                     <button onclick="document.querySelector('[onclick*=\\'registro\\']').click()" class="btn-dash-action success">
                         <i class="fa-solid fa-plus"></i> Registrar Nuevo Equipo
                     </button>
-
                     <button onclick="abrirInterfazRegistro('clase')" class="btn-dash-action alt">
                         <i class="fa-solid fa-layer-group"></i> Nueva Clase / Tipo
                     </button>
-                    
                     <button onclick="abrirInterfazRegistro('responsable')" class="btn-dash-action alt">
                         <i class="fa-solid fa-user-plus"></i> Nuevo Responsable
                     </button>
-                    
                     <button onclick="abrirInterfazRegistro('gerencia')" class="btn-dash-action alt">
                         <i class="fa-solid fa-sitemap"></i> Nueva Gerencia / Depto.
                     </button>
-
                     <button onclick="generarReportePDF()" class="btn-dash-action info">
                         <i class="fa-solid fa-file-pdf"></i> Generar Reporte PDF
                     </button>
@@ -155,19 +157,15 @@ function cargarInterfazPanel(contenedor) {
  * Procesa la data global y rellena los indicadores del Panel de Control
  */
 function inicializarLogicaPanel() {
-    // Si la variable global está vacía, no intentamos actualizar para evitar errores
     if (!todosLosEquipos || todosLosEquipos.length === 0) {
         console.warn("No hay datos cargados para las métricas.");
         return;
     }
 
-    // 1. Cálculos de métricas
+    // 1. Cálculos de métricas básicas
     const total = todosLosEquipos.length;
-    
-    // ESTADO CRÍTICO: Filtramos específicamente por el texto "dañado"
-    const fallas = todosLosEquipos.filter(e => 
-        e.estado?.toLowerCase().trim() === 'dañado'
-    ).length;
+    const fallas = todosLosEquipos.filter(e => e.estado?.toLowerCase().trim() === 'dañado').length;
+    const operativos = total - fallas;
 
     // 2. Determinar Clase Predominante
     const conteoClases = {};
@@ -185,7 +183,7 @@ function inicializarLogicaPanel() {
         }
     });
 
-    // 3. Actualizar el DOM de las tarjetas superiores
+    // 3. Actualizar tarjetas superiores
     const elTotal = document.getElementById('total-activos');
     const elFallas = document.getElementById('total-fallas');
     const elClase = document.getElementById('clase-dominante');
@@ -196,27 +194,39 @@ function inicializarLogicaPanel() {
     if (elClase) elClase.innerText = claseMax;
     if (elAct) elAct.innerText = `Sincronizado: ${new Date().toLocaleTimeString()}`;
 
-    // 4. Distribución por Clase (Diseño Llamativo con Barras Progresivas)
-    const listaClases = document.getElementById('stats-clases-list');
-    if (listaClases) {
-        // Generamos el HTML con una estructura más robusta para el CSS premium
-        listaClases.innerHTML = Object.entries(conteoClases).map(([nombre, valor]) => {
-            const porcentaje = ((valor / total) * 100).toFixed(1);
-            return `
-                <div class="clase-decorada-row">
-                    <div class="clase-encabezado">
-                        <span class="clase-nombre">${nombre}</span>
-                        <div class="clase-datos">
-                            <span class="clase-conteo">${valor} und.</span>
-                            <span class="clase-porcentaje">(${porcentaje}%)</span>
-                        </div>
-                    </div>
-                    <div class="barra-progreso-contenedor">
-                        <div class="barra-progreso-relleno" style="width: ${porcentaje}%"></div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+    // 4. INICIALIZAR GRÁFICAS (CHART.JS)
+    
+    // Gráfica de Barras (Flujo de Inventario - Datos de ejemplo basados en tu stock)
+    const ctxBar = document.getElementById('canvas-barras');
+    if (ctxBar) {
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                datasets: [
+                    { label: 'Ingresos', data: [5, 10, 8, 15, total, 0], backgroundColor: '#2ecc71' },
+                    { label: 'Bajas', data: [1, 2, 0, 3, fallas, 0], backgroundColor: '#e74c3c' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    // Gráfica de Dona (Estado General)
+    const ctxDona = document.getElementById('canvas-dona');
+    if (ctxDona) {
+        new Chart(ctxDona, {
+            type: 'doughnut',
+            data: {
+                labels: ['Operativos', 'Dañados'],
+                datasets: [{
+                    data: [operativos, fallas],
+                    backgroundColor: ['#2ecc71', '#e74c3c'],
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
     }
 }
 
