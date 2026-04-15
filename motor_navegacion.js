@@ -66,16 +66,16 @@ function cargarInterfazPanel(contenedor) {
                         <i class="fa-solid fa-plus"></i> Registrar Nuevo Equipo
                     </button>
 
-                    <button onclick="abrirModalRegistro('clase')" class="btn-dash-action alt">
+                    <button onclick="abrirInterfazRegistro('clase')" class="btn-dash-action alt">
                         <i class="fa-solid fa-layer-group"></i> Nueva Clase / Tipo
                     </button>
                     
-                    <button onclick="abrirModalRegistro('responsable')" class="btn-dash-action alt">
+                    <button onclick="abrirInterfazRegistro('responsable')" class="btn-dash-action alt">
                         <i class="fa-solid fa-user-plus"></i> Nuevo Responsable
                     </button>
                     
-                    <button onclick="abrirModalRegistro('gerencia')" class="btn-dash-action alt">
-                        <i class="fa-solid fa-building-user"></i> Nueva Gerencia / Depto.
+                    <button onclick="abrirInterfazRegistro('gerencia')" class="btn-dash-action alt">
+                        <i class="fa-solid fa-sitemap"></i> Nueva Gerencia / Depto.
                     </button>
 
                     <button onclick="generarReportePDF()" class="btn-dash-action info">
@@ -228,10 +228,119 @@ function cargarFormularioRegistro(contenedor) {
     `;
 }
 
+/**
+ * Genera una pantalla emergente (Modal) para el registro de tablas maestras
+ */
+function abrirInterfazRegistro(tipo) {
+    let htmlFormulario = "";
+    let icono = "";
+    let titulo = "";
 
+    // Definición de campos basada en tus tablas de la base de datos
+    switch (tipo) {
+        case 'clase':
+            titulo = "Registrar Nueva Clase";
+            icono = "fa-layer-group";
+            htmlFormulario = `
+                <div class="campo">
+                    <label>Nombre de la Clase</label>
+                    <input type="text" name="nombre" placeholder="Ej: Computación" required>
+                </div>`;
+            break;
+
+        case 'responsable':
+            titulo = "Registrar Nuevo Responsable";
+            icono = "fa-user-plus";
+            htmlFormulario = `
+                <div class="campo">
+                    <label>Cédula</label>
+                    <input type="text" name="cedula" placeholder="V-00000000" required>
+                </div>
+                <div class="campo">
+                    <label>Nombre</label>
+                    <input type="text" name="nombre" placeholder="Nombre" required>
+                </div>
+                <div class="campo">
+                    <label>Apellido</label>
+                    <input type="text" name="apellido" placeholder="Apellido" required>
+                </div>
+                <div class="campo">
+                    <label>ID Departamento</label>
+                    <input type="number" name="id_departamento" required>
+                </div>`;
+            break;
+
+        case 'gerencia':
+            titulo = "Registrar Nueva Gerencia";
+            icono = "fa-sitemap"; // Icono de jerarquía/organización
+            htmlFormulario = `
+                <div class="campo">
+                    <label>Nombre de la Gerencia</label>
+                    <input type="text" name="nombre" placeholder="Ej: Gerencia General" required>
+                </div>`;
+            break;
+            
+        case 'departamento':
+            titulo = "Registrar Nuevo Departamento";
+            icono = "fa-sitemap";
+            htmlFormulario = `
+                <div class="campo">
+                    <label>Nombre del Departamento</label>
+                    <input type="text" name="nombre" required>
+                </div>
+                <div class="campo">
+                    <label>Centro de Costo</label>
+                    <input type="text" name="centro_costo" required>
+                </div>
+                <div class="campo">
+                    <label>ID Gerencia</label>
+                    <input type="number" name="id_gerencia" required>
+                </div>`;
+            break;
+            
+    }
+    
+
+    // Crear el elemento del modal (PANTALLA FLOTANTE)
+    const overlay = document.createElement('div');
+    overlay.id = "modal-emergente";
+    overlay.className = "modal-overlay-sistema active";
+    
+    overlay.innerHTML = `
+        <div class="modal-content-sistema">
+            <div class="modal-header-sistema">
+                <h3><i class="fa-solid ${icono}"></i> ${titulo}</h3>
+                <button type="button" class="btn-cerrar-top" onclick="this.closest('.modal-overlay-sistema').remove()">&times;</button>
+            </div>
+            <form id="form-maestro-dinamico" class="form-modal-body">
+                <p class="instruccion">Complete los campos según el esquema de la base de datos</p>
+                ${htmlFormulario}
+                <div class="modal-footer-sistema">
+                    <button type="button" onclick="this.closest('.modal-overlay-sistema').remove()" class="btn-cancelar">Cerrar</button>
+                    <button type="submit" class="btn-guardar-maestro">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Lógica de envío
+    document.getElementById('form-maestro-dinamico').onsubmit = (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const datos = Object.fromEntries(formData.entries());
+        console.log(`Enviando registro de ${tipo}:`, datos);
+        // Aquí llamarías a tu función de guardado en BD
+        // procesarRegistroMaestro(tipo, datos);
+    };
+}
 
 /**
  * Función para cargar Inventario con columnas totalmente independientes
+ */
+/**
+ * Función para cargar Inventario con columnas de edición y eliminación
  */
 async function cargarInventario(contenedor) {
     contenedor.innerHTML = '<p class="cargando">Conectando con el servidor de Visco...</p>';
@@ -279,19 +388,20 @@ async function cargarInventario(contenedor) {
                                 <th>Observaciones</th>
                                 <th>Fecha Modif.</th>
                                 <th>Usuario Modif.</th>
-                            </tr>
+                                <th>Acciones</th> </tr>
                         </thead>
                         <tbody id="cuerpo-tabla">
         `;
 
         equipos.forEach(equipo => {
             const fechaMod = equipo.fecha_modificacion ? new Date(equipo.fecha_modificacion).toLocaleDateString() : 'N/A';
+            const fmoId = equipo.fmo || 'S/N';
 
             vistaHTML += `
                 <tr>
                     <td>${equipo.clase || '-'}</td>
                     <td>${equipo.tipo || '-'}</td>
-                    <td><strong>${equipo.fmo || 'S/N'}</strong></td>
+                    <td><strong>${fmoId}</strong></td>
                     <td>${equipo.serial || '-'}</td>
                     <td>${equipo.marca || '-'}</td>
                     <td><span class="etiqueta-estado ${equipo.estado.toLowerCase()}">${equipo.estado}</span></td>
@@ -306,8 +416,19 @@ async function cargarInventario(contenedor) {
                     </td>
                     <td>${fechaMod}</td>
                     <td>${equipo.usuario_modificacion || 'Sistema'}</td>
-                    <td>
-                        <button class="btn-mini" title="Ver Detalles"><i class="fa-solid fa-eye"></i></button>
+                    <td class="celda-acciones">
+                        <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${fmoId}')">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button class="btn-mini btn-archivo" title="Subir Imágenes/Facturas" onclick="abrirInterfazRegistro('subir_archivo', '${fmoId}')">
+                            <i class="fa-solid fa-images"></i>
+                        </button>
+                        <button class="btn-mini btn-editar" title="Modificar" onclick="abrirInterfazRegistro('editar_equipo', '${fmoId}')">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button class="btn-mini btn-eliminar" title="Eliminar" onclick="confirmarEliminar('${fmoId}')">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
             `;
@@ -500,3 +621,11 @@ window.onload = () => {
         }
     }
 };
+
+function confirmarEliminacion(id) {
+    const confirmacion = confirm(`¿Está seguro de que desea dar de baja el equipo con FMO: ${id}? Esta acción quedará registrada en la auditoría.`);
+    if (confirmacion) {
+        console.log("Procediendo a eliminación lógica de:", id);
+        // Aquí llamarías a tu API: ejecutarEliminacion(id);
+    }
+}

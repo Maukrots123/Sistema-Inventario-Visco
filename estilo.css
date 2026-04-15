@@ -598,3 +598,158 @@ textarea[name="observaciones"] {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+
+
+/* Formulario Dinamico para Registrar una nueva gerencia, clase, y responsable */
+.modal-overlay-sistema {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Por encima de todo */
+}
+
+.modal-content-sistema {
+    background: white;
+    width: 95%;
+    max-width: 500px;
+    border-radius: 12px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: slideIn 0.3s ease-out;
+}
+
+.modal-header-sistema {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.btn-cerrar-top {
+    background: none; border: none;
+    font-size: 24px; cursor: pointer; color: #666;
+}
+
+.form-modal-body { padding: 25px; }
+.instruccion { font-size: 0.85rem; color: #888; margin-bottom: 20px; }
+
+/* --- ESTILOS DE LOS BOTONES DEL FOOTER --- */
+
+.modal-footer-sistema {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 25px;
+    background: #f8fafc;
+    border-top: 1px solid #f0f0f0;
+}
+
+/* Botón Cerrar/Cancelar */
+.btn-cancelar {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancelar:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* Botón Guardar */
+.btn-guardar-maestro {
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    background: #2563eb; /* Azul corporativo */
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    transition: all 0.2s;
+}
+
+.btn-guardar-maestro:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+}
+
+.btn-guardar-maestro:active {
+    transform: translateY(0);
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+
+.celda-acciones {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.btn-mini {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.btn-ojo:hover { background: #3b82f6; color: white; }
+.btn-editar:hover { background: #f59e0b; color: white; }
+.btn-eliminar:hover { background: #ef4444; color: white; }
+
+/* Pantalla flotante para subir una imagen*/
+.btn-archivo:hover { background: #8e44ad; color: white; } /* Color Púrpura para multimedia */
+
+/* Diseño de la zona de subida */
+.drop-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    background: #f8fafc;
+    transition: all 0.3s;
+    display: block;
+    margin-top: 10px;
+}
+
+.drop-zone:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.alerta-info {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
