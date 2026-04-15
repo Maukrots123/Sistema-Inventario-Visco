@@ -773,3 +773,19 @@ textarea[name="observaciones"] {
     align-items: center;
     gap: 10px;
 }
+
+/* estilos para panel de control*/
+.clase-decorada-row { margin-bottom: 15px; }
+.clase-encabezado { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.clase-nombre { font-weight: bold; color: #333; }
+.barra-progreso-contenedor { 
+    background: #e9ecef; 
+    border-radius: 10px; 
+    height: 12px; 
+    overflow: hidden; 
+}
+.barra-progreso-relleno { 
+    background: linear-gradient(90deg, #007bff, #00c6ff); 
+    height: 100%; 
+    transition: width 1s ease-in-out; 
+}

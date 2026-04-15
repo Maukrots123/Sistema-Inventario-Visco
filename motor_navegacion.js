@@ -7,7 +7,32 @@ async function cambiarSeccion(nombreSeccion, elemento) {
     enlaces.forEach(link => link.classList.remove('activo'));
     elemento.classList.add('activo');
 
+    
+
     switch (nombreSeccion) {
+        case 'dashboard':
+            titulo.innerText = "Panel de Control";
+            
+            // 1. Mostramos un estado de carga (como hace el inventario)
+            contenedor.innerHTML = '<p class="cargando">Calculando métricas de Visco...</p>';
+            
+            try {
+                // 2. REPLICA: Hacemos el fetch y esperamos la respuesta (esto llena la variable global)
+                const respuesta = await fetch('/api/equipos');
+                todosLosEquipos = await respuesta.json(); 
+
+                // 3. Inyectamos la interfaz vacía
+                cargarInterfazPanel(contenedor);
+                
+                // 4. Ejecutamos la lógica (ahora sí hay datos seguros en todosLosEquipos)
+                inicializarLogicaPanel();
+                
+            } catch (error) {
+                console.error("Error en Dashboard-Visco:", error);
+                contenedor.innerHTML = '<div class="error-box">Error al sincronizar indicadores.</div>';
+            }
+            break;
+
         case 'inventario':
             titulo.innerText = "Gestión de Inventario";
             await cargarInventario(contenedor);
@@ -17,11 +42,7 @@ async function cambiarSeccion(nombreSeccion, elemento) {
             cargarFormularioRegistro(contenedor);
             await cargarOpcionesFormulario();
             break;
-        case 'dashboard':
-            titulo.innerText = "Panel de Control";
-            cargarInterfazPanel(contenedor);
-            await inicializarLogicaPanel();
-            break;
+    
         default:
             contenedor.innerHTML = '<h2>Sección en Desarrollo</h2>';
     }
@@ -126,6 +147,79 @@ function cargarInterfazPanel(contenedor) {
         </div>
     `;
 }
+
+/**
+ * Procesa la data global y rellena los indicadores del Panel de Control
+ */
+/**
+ * Procesa la data global y rellena los indicadores del Panel de Control
+ */
+function inicializarLogicaPanel() {
+    // Si la variable global está vacía, no intentamos actualizar para evitar errores
+    if (!todosLosEquipos || todosLosEquipos.length === 0) {
+        console.warn("No hay datos cargados para las métricas.");
+        return;
+    }
+
+    // 1. Cálculos de métricas
+    const total = todosLosEquipos.length;
+    
+    // ESTADO CRÍTICO: Filtramos específicamente por el texto "dañado"
+    const fallas = todosLosEquipos.filter(e => 
+        e.estado?.toLowerCase().trim() === 'dañado'
+    ).length;
+
+    // 2. Determinar Clase Predominante
+    const conteoClases = {};
+    todosLosEquipos.forEach(e => {
+        const clase = e.clase || 'Sin Clase';
+        conteoClases[clase] = (conteoClases[clase] || 0) + 1;
+    });
+
+    let claseMax = "--";
+    let maxValor = 0;
+    Object.entries(conteoClases).forEach(([nombre, valor]) => {
+        if (valor > maxValor) {
+            maxValor = valor;
+            claseMax = nombre;
+        }
+    });
+
+    // 3. Actualizar el DOM de las tarjetas superiores
+    const elTotal = document.getElementById('total-activos');
+    const elFallas = document.getElementById('total-fallas');
+    const elClase = document.getElementById('clase-dominante');
+    const elAct = document.getElementById('ultima-act');
+
+    if (elTotal) elTotal.innerText = total;
+    if (elFallas) elFallas.innerText = fallas;
+    if (elClase) elClase.innerText = claseMax;
+    if (elAct) elAct.innerText = `Sincronizado: ${new Date().toLocaleTimeString()}`;
+
+    // 4. Distribución por Clase (Diseño Llamativo con Barras Progresivas)
+    const listaClases = document.getElementById('stats-clases-list');
+    if (listaClases) {
+        // Generamos el HTML con una estructura más robusta para el CSS premium
+        listaClases.innerHTML = Object.entries(conteoClases).map(([nombre, valor]) => {
+            const porcentaje = ((valor / total) * 100).toFixed(1);
+            return `
+                <div class="clase-decorada-row">
+                    <div class="clase-encabezado">
+                        <span class="clase-nombre">${nombre}</span>
+                        <div class="clase-datos">
+                            <span class="clase-conteo">${valor} und.</span>
+                            <span class="clase-porcentaje">(${porcentaje}%)</span>
+                        </div>
+                    </div>
+                    <div class="barra-progreso-contenedor">
+                        <div class="barra-progreso-relleno" style="width: ${porcentaje}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
 
 /**
  * Genera el formulario de registro con diseño de cuadrícula
