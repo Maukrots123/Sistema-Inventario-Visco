@@ -19,11 +19,112 @@ async function cambiarSeccion(nombreSeccion, elemento) {
             break;
         case 'dashboard':
             titulo.innerText = "Panel de Control";
-            contenedor.innerHTML = '<div class="contenedor-tabla"><h2>Resumen General</h2></div>';
+            cargarInterfazPanel(contenedor);
+            await inicializarLogicaPanel();
             break;
         default:
             contenedor.innerHTML = '<h2>Sección en Desarrollo</h2>';
     }
+}
+
+/**
+ * Genera la interfaz del Panel de Control con métricas y auditoría detallada
+ */
+function cargarInterfazPanel(contenedor) {
+    contenedor.innerHTML = `
+        <div class="dashboard-wrapper">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Total Activos</span>
+                    <h2 id="total-activos">0</h2>
+                    <p id="ultima-act" class="stat-subtext">Sincronizando...</p>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-label">Estado Crítico</span>
+                    <h2 id="total-fallas">0</h2>
+                    <p class="stat-subtext">Equipos en falla / Dañados</p>
+                </div>
+                <div class="stat-card primary">
+                    <span class="stat-label">Clase Predominante</span>
+                    <h2 id="clase-dominante">--</h2>
+                    <p class="stat-subtext">Mayor volumen en stock</p>
+                </div>
+            </div>
+
+            <div class="main-stats-row">
+                <div class="chart-container">
+                    <h3><i class="fa-solid fa-chart-simple"></i> Distribución por Clase</h3>
+                    <div id="stats-clases-list" class="clases-list">
+                        <p class="loading-text">Procesando categorías...</p>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <h3>Acciones Rápidas</h3>
+                    
+                    <button onclick="document.querySelector('[onclick*=\\'registro\\']').click()" class="btn-dash-action success">
+                        <i class="fa-solid fa-plus"></i> Registrar Nuevo Equipo
+                    </button>
+
+                    <button onclick="abrirModalRegistro('clase')" class="btn-dash-action alt">
+                        <i class="fa-solid fa-layer-group"></i> Nueva Clase / Tipo
+                    </button>
+                    
+                    <button onclick="abrirModalRegistro('responsable')" class="btn-dash-action alt">
+                        <i class="fa-solid fa-user-plus"></i> Nuevo Responsable
+                    </button>
+                    
+                    <button onclick="abrirModalRegistro('gerencia')" class="btn-dash-action alt">
+                        <i class="fa-solid fa-building-user"></i> Nueva Gerencia / Depto.
+                    </button>
+
+                    <button onclick="generarReportePDF()" class="btn-dash-action info">
+                        <i class="fa-solid fa-file-pdf"></i> Generar Reporte PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="audit-section">
+                <div class="audit-header">
+                    <div class="audit-title">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> Auditoría de Movimientos</h3>
+                        <p>Historial detallado de cambios y responsables</p>
+                    </div>
+                    <div class="audit-filters">
+                        <div class="btn-group-audit">
+                            <button onclick="cargarAuditoria(1)">1D</button>
+                            <button onclick="cargarAuditoria(7)">7D</button>
+                            <button onclick="cargarAuditoria(30)">1M</button>
+                        </div>
+                        <div class="custom-range">
+                            <input type="date" id="fecha-inicio">
+                            <input type="date" id="fecha-fin">
+                            <button onclick="consultarFechasPersonalizadas()" class="btn-search-audit">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="audit-table-wrapper">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>FMO</th>
+                                <th>Tipo / Marca</th>
+                                <th>Estado</th>
+                                <th>Fecha Mov.</th>
+                                <th>Operador / Responsable</th> 
+                            </tr>
+                        </thead>
+                        <tbody id="body-auditoria">
+                            <tr><td colspan="5" class="empty-state">Inicie una consulta de auditoría</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 /**
