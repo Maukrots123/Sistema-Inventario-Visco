@@ -336,19 +336,17 @@ function abrirInterfazRegistro(tipo) {
     };
 }
 
-/**
- * Función para cargar Inventario con columnas totalmente independientes
- */
-/**
- * Función para cargar Inventario con columnas de edición y eliminación
- */
+
+let todosLosEquipos = []; // Variable global para persistencia de datos
+
 async function cargarInventario(contenedor) {
     contenedor.innerHTML = '<p class="cargando">Conectando con el servidor de Visco...</p>';
 
     try {
         const respuesta = await fetch('/api/equipos');
-        const equipos = await respuesta.json();
+        todosLosEquipos = await respuesta.json(); 
 
+        // 1. Inyectamos la estructura base del inventario
         let vistaHTML = `
             <div class="contenedor-inventario">
                 <div class="panel-herramientas">
@@ -365,7 +363,6 @@ async function cargarInventario(contenedor) {
                             <option value="estado">Estado</option>
                         </select>
                     </div>
-                    
                     <button class="btn-reporte-premium" onclick="generarPDF()">
                         <i class="fa-solid fa-file-pdf"></i> GENERAR REPORTE
                     </button>
@@ -375,74 +372,100 @@ async function cargarInventario(contenedor) {
                     <table class="tabla-datos">
                         <thead>
                             <tr>
-                                <th>Clase</th>
-                                <th>Tipo</th>
-                                <th>FMO</th>
-                                <th>Serial</th>
-                                <th>Marca</th>
-                                <th>Estado</th>
-                                <th>Asignado</th>
-                                <th>Gerencia</th>
-                                <th>Departamento</th>
-                                <th>Centro Costo</th>
-                                <th>Observaciones</th>
-                                <th>Fecha Modif.</th>
-                                <th>Usuario Modif.</th>
-                                <th>Acciones</th> </tr>
+                                <th>Clase</th> <th>Tipo</th> <th>FMO</th> <th>Serial</th>
+                                <th>Marca</th> <th>Estado</th> <th>Asignado</th>
+                                <th>Gerencia</th> <th>Departamento</th> <th>C. Costo</th>
+                                <th>Observaciones</th> <th>Fecha Modif.</th>
+                                <th>Usuario Modif.</th> <th>Acciones</th>
+                            </tr>
                         </thead>
-                        <tbody id="cuerpo-tabla">
-        `;
-
-        equipos.forEach(equipo => {
-            const fechaMod = equipo.fecha_modificacion ? new Date(equipo.fecha_modificacion).toLocaleDateString() : 'N/A';
-            const fmoId = equipo.fmo || 'S/N';
-
-            vistaHTML += `
-                <tr>
-                    <td>${equipo.clase || '-'}</td>
-                    <td>${equipo.tipo || '-'}</td>
-                    <td><strong>${fmoId}</strong></td>
-                    <td>${equipo.serial || '-'}</td>
-                    <td>${equipo.marca || '-'}</td>
-                    <td><span class="etiqueta-estado ${equipo.estado.toLowerCase()}">${equipo.estado}</span></td>
-                    <td>${equipo.asignado || 'Sin Asignar'}</td>
-                    <td>${equipo.gerencia || '-'}</td>
-                    <td>${equipo.departamento || '-'}</td>
-                    <td>${equipo.centro_costo || '-'}</td>
-                    <td title="${equipo.observaciones || ''}">
-                        <div style="max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${equipo.observaciones || '-'}
-                        </div>
-                    </td>
-                    <td>${fechaMod}</td>
-                    <td>${equipo.usuario_modificacion || 'Sistema'}</td>
-                    <td class="celda-acciones">
-                        <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${fmoId}')">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
-                        <button class="btn-mini btn-archivo" title="Subir Imágenes/Facturas" onclick="abrirInterfazRegistro('subir_archivo', '${fmoId}')">
-                            <i class="fa-solid fa-images"></i>
-                        </button>
-                        <button class="btn-mini btn-editar" title="Modificar" onclick="abrirInterfazRegistro('editar_equipo', '${fmoId}')">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button class="btn-mini btn-eliminar" title="Eliminar" onclick="confirmarEliminar('${fmoId}')">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        vistaHTML += `</tbody></table></div></div>`;
+                        <tbody id="cuerpo-tabla"></tbody>
+                    </table>
+                </div>
+            </div>`;
+        
         contenedor.innerHTML = vistaHTML;
 
+        // 2. Referencias al DOM para el filtrado
+        const inputBusqueda = document.getElementById('input-busqueda');
+        const filtroCampo = document.getElementById('filtro-campo');
+
+        // 3. Lógica de filtrado con correcciones (Espacios y Coincidencia inicial)
+        inputBusqueda.addEventListener('input', () => {
+            // CORRECCIÓN: .trim() elimina espacios muertos al inicio/final
+            const texto = inputBusqueda.value.trim().toLowerCase();
+            const campo = filtroCampo.value;
+
+            if (texto === "") {
+                actualizarCuerpoTabla(todosLosEquipos);
+                return;
+            }
+
+            const filtrados = todosLosEquipos.filter(equipo => {
+                const valor = String(equipo[campo] || "").toLowerCase();
+                // CORRECCIÓN: .startsWith() busca solo desde el inicio de la cadena
+                return valor.startsWith(texto);
+            });
+
+            actualizarCuerpoTabla(filtrados);
+        });
+
+        // 4. Renderizado inicial
+        actualizarCuerpoTabla(todosLosEquipos);
+
     } catch (error) {
-        console.error(error);
-        contenedor.innerHTML = '<div class="error-box"><i class="fa-solid fa-triangle-exclamation"></i> Error al cargar datos del inventario.</div>';
+        console.error("Error en Visco-Inventario:", error);
+        contenedor.innerHTML = '<div class="error-box">Error al cargar datos del servidor.</div>';
     }
 }
 
+ 
+function actualizarCuerpoTabla(lista) {
+    const cuerpo = document.getElementById('cuerpo-tabla');
+    if (!cuerpo) return;
+
+    cuerpo.innerHTML = lista.map(equipo => {
+        const fechaMod = equipo.fecha_modificacion ? new Date(equipo.fecha_modificacion).toLocaleDateString() : 'N/A';
+        const fmoId = equipo.fmo || 'S/N';
+        const estadoClase = equipo.estado?.toLowerCase() || 'desconocido';
+        
+        return `
+            <tr>
+                <td>${equipo.clase || '-'}</td>
+                <td>${equipo.tipo || '-'}</td>
+                <td><strong>${fmoId}</strong></td>
+                <td>${equipo.serial || '-'}</td>
+                <td>${equipo.marca || '-'}</td>
+                <td><span class="etiqueta-estado ${estadoClase}">${equipo.estado || 'N/A'}</span></td>
+                <td>${equipo.asignado || 'Sin Asignar'}</td>
+                <td>${equipo.gerencia || '-'}</td>
+                <td>${equipo.departamento || '-'}</td>
+                <td>${equipo.centro_costo || '-'}</td>
+                <td title="${equipo.observaciones || ''}">
+                    <div style="max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${equipo.observaciones || '-'}
+                    </div>
+                </td>
+                <td>${fechaMod}</td>
+                <td>${equipo.usuario_modificacion || 'Sistema'}</td>
+                <td class="celda-acciones">
+                    <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${fmoId}')">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button class="btn-mini btn-archivo" title="Subir Imágenes" onclick="abrirInterfazRegistro('subir_archivo', '${fmoId}')">
+                        <i class="fa-solid fa-images"></i>
+                    </button>
+                    <button class="btn-mini btn-editar" title="Modificar" onclick="abrirInterfazRegistro('editar_equipo', '${fmoId}')">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn-mini btn-eliminar" title="Eliminar" onclick="confirmarEliminar('${fmoId}')">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 /**
  * Variables globales para almacenar los catálogos y filtrar localmente
  */

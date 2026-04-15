@@ -706,23 +706,43 @@ textarea[name="observaciones"] {
     justify-content: center;
 }
 
+/* 1. Base del botón */
 .btn-mini {
     padding: 6px 10px;
     border-radius: 6px;
-    border: none;
+    border: none !important;
     cursor: pointer;
-    transition: all 0.2s;
-    background: #f1f5f9;
-    color: #475569;
+    transition: all 0.2s ease-in-out;
+    background-color: #f1f5f9 !important; /* Gris suave base */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.btn-ojo:hover { background: #3b82f6; color: white; }
-.btn-editar:hover { background: #f59e0b; color: white; }
-.btn-eliminar:hover { background: #ef4444; color: white; }
+/* 2. Color base del ICONO (importante para que no se quede gris) */
+.btn-mini i {
+    color: #475569; 
+    transition: color 0.2s;
+    pointer-events: none; /* Hace que el mouse "atraviese" el icono y toque el botón */
+}
 
-/* Pantalla flotante para subir una imagen*/
-.btn-archivo:hover { background: #8e44ad; color: white; } /* Color Púrpura para multimedia */
+/* --- HOVERS CON HERENCIA --- */
 
+/* Ver Detalles - Azul */
+.btn-mini.btn-ojo:hover { background-color: #3b82f6 !important; }
+.btn-mini.btn-ojo:hover i { color: white !important; }
+
+/* Subir Archivo - Púrpura */
+.btn-mini.btn-archivo:hover { background-color: #8e44ad !important; }
+.btn-mini.btn-archivo:hover i { color: white !important; }
+
+/* Editar - Naranja */
+.btn-mini.btn-editar:hover { background-color: #f59e0b !important; }
+.btn-mini.btn-editar:hover i { color: white !important; }
+
+/* Eliminar - Rojo */
+.btn-mini.btn-eliminar:hover { background-color: #ef4444 !important; }
+.btn-mini.btn-eliminar:hover i { color: white !important; }
 /* Diseño de la zona de subida */
 .drop-zone {
     border: 2px dashed #cbd5e1;
