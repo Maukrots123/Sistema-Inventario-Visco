@@ -539,7 +539,8 @@ async function cargarInventario(contenedor) {
                             <option value="estado">Estado</option>
                         </select>
                     </div>
-                    <button class="btn-reporte-premium" onclick="generarPDF()">
+
+                    <button class="btn-reporte-premium" onclick="abrirModal()">
                         <i class="fa-solid fa-file-pdf"></i> GENERAR REPORTE
                     </button>
                 </div>
@@ -645,6 +646,7 @@ function actualizarCuerpoTabla(lista) {
 /**
  * Variables globales para almacenar los catálogos y filtrar localmente
  */
+let catalogoGerencias = [];
 let catalogoDepartamentos = [];
 
 async function cargarOpcionesFormulario() {
@@ -865,3 +867,91 @@ function cargarInterfazConfig(contenedor) {
         </div>
     `;
 }
+
+
+// 1. Abrir Modal y cargar gerencias
+async function abrirModal() {
+    document.getElementById('modal-reporte').style.display = 'flex';
+    const selGerencia = document.getElementById('pdf-gerencia');
+    
+    try {
+        // Hacemos el fetch en el momento justo
+        const respuesta = await fetch('/api/gerencias');
+        const gerencias = await respuesta.json();
+        
+        selGerencia.innerHTML = '<option value="">Seleccione Gerencia...</option>';
+        gerencias.forEach(g => {
+            selGerencia.innerHTML += `<option value="${g.id}">${g.nombre}</option>`;
+        });
+    } catch (e) {
+        console.error("Error al cargar gerencias:", e);
+        alert("No se pudieron cargar las gerencias.");
+    }
+}
+
+// 2. Filtrar departamentos al cambiar gerencia
+async function actualizarDeptosModal() {
+    const gerenciaId = document.getElementById('pdf-gerencia').value;
+    const selDepto = document.getElementById('pdf-depto');
+    
+    // Limpiamos
+    selDepto.innerHTML = '<option value="">Seleccione Departamento...</option>';
+    
+    if (!gerenciaId) return;
+
+    try {
+        // Obtenemos todos los departamentos (asegúrate de que esta variable tenga los datos)
+        // Si no tienes una variable global, haz el fetch aquí:
+        const respuesta = await fetch('/api/departamentos'); 
+        const todosLosDeptos = await respuesta.json();
+        
+        // AQUÍ ESTÁ LA LÓGICA DE RELACIÓN DE TABLAS:
+        // Filtramos buscando que el id_gerencia del departamento sea igual al seleccionado
+        const filtrados = todosLosDeptos.filter(d => String(d.id_gerencia) === String(gerenciaId));
+        
+        filtrados.forEach(d => {
+            selDepto.innerHTML += `<option value="${d.id}">${d.nombre}</option>`;
+        });
+        
+        if (filtrados.length === 0) {
+            selDepto.innerHTML = '<option value="">No hay departamentos en esta gerencia</option>';
+        }
+    } catch (e) {
+        console.error("Error al filtrar departamentos:", e);
+    }
+}
+
+function cerrarModal() { document.getElementById('modal-reporte').style.display = 'none'; }
+
+// 3. Generar PDF definitivo
+function ejecutarGeneracionPDF() {
+    const selG = document.getElementById('pdf-gerencia');
+    const selD = document.getElementById('pdf-depto');
+    
+    if(!selG.value || !selD.value) return alert("Seleccione ambos campos");
+    
+    const nomG = selG.options[selG.selectedIndex].text.toUpperCase();
+    const nomD = selD.options[selD.selectedIndex].text.toUpperCase();
+    
+    const filtrados = todosLosEquipos.filter(e => e.gerencia.toUpperCase() === nomG && e.departamento.toUpperCase() === nomD);
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+    
+    // Encabezado
+    doc.setFontSize(14); doc.text("LISTADO DE EQUIPOS TELEMÁTICOS", 148, 15, { align: "center" });
+    doc.setFontSize(12); doc.text(nomD, 148, 22, { align: "center" });
+    doc.text(nomG, 148, 29, { align: "center" });
+    
+    // Tabla con columnas solicitadas
+    doc.autoTable({
+        startY: 35,
+        head: [["N", "Clase", "Tipo", "FMO", "Serial", "Marca", "C. Costo"]],
+        body: filtrados.map((e, i) => [i+1, e.clase, e.tipo, e.fmo, e.serial, e.marca, e.centro_costo]),
+        theme: 'grid'
+    });
+    
+    doc.save(`Reporte_${nomD}.pdf`);
+    cerrarModal();
+}
+

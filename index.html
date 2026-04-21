@@ -47,5 +47,24 @@
     </div>
     <script src="motor_navegacion.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </body>
 </html>
+
+<div id="modal-reporte" class="modal-fondo" style="display: none;">
+    <div class="modal-contenido">
+        <h3>Seleccionar Filtros para Reporte</h3>
+        <select id="pdf-gerencia" onchange="actualizarDeptosModal()">
+            <option value="">Seleccione Gerencia...</option>
+        </select>
+        <select id="pdf-depto">
+            <option value="">Seleccione Departamento...</option>
+        </select>
+        <div class="modal-acciones">
+            <button onclick="cerrarModal()" class="btn-cancelar">Cancelar</button>
+            <button onclick="ejecutarGeneracionPDF()" class="btn-confirmar">Generar PDF</button>
+        </div>
+    </div>
+</div>
