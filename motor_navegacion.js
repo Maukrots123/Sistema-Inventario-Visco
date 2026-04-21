@@ -162,74 +162,117 @@ function inicializarLogicaPanel() {
         return;
     }
 
-    // 1. Cálculos de métricas básicas
+    // 1. Cálculos de métricas de flujo (Normalizando a minúsculas)
     const total = todosLosEquipos.length;
-    const fallas = todosLosEquipos.filter(e => e.estado?.toLowerCase().trim() === 'dañado').length;
-    const operativos = total - fallas;
-
-    // 2. Determinar Clase Predominante
-    const conteoClases = {};
-    todosLosEquipos.forEach(e => {
-        const clase = e.clase || 'Sin Clase';
-        conteoClases[clase] = (conteoClases[clase] || 0) + 1;
+    const estados = ['almacen', 'asignado', 'dañado', 'revision'];
+    const conteoEstados = {};
+    
+    // Contamos dinámicamente cada estado
+    estados.forEach(estado => {
+        conteoEstados[estado] = todosLosEquipos.filter(e => 
+            e.estado?.toLowerCase().trim() === estado
+        ).length;
     });
+
+    // 2. Agrupación por Gerencia (usando el campo 'gerencia' de tu API)
+    const conteoGerencias = todosLosEquipos.reduce((acc, e) => {
+        const gerencia = e.gerencia || 'Sin Gerencia';
+        acc[gerencia] = (acc[gerencia] || 0) + 1;
+        return acc;
+    }, {});
+
+    // 3. Determinar Clase Predominante
+    const conteoClases = todosLosEquipos.reduce((acc, e) => {
+        const clase = e.clase || 'Sin Clase';
+        acc[clase] = (acc[clase] || 0) + 1;
+        return acc;
+    }, {});
 
     let claseMax = "--";
     let maxValor = 0;
     Object.entries(conteoClases).forEach(([nombre, valor]) => {
-        if (valor > maxValor) {
-            maxValor = valor;
-            claseMax = nombre;
-        }
+        if (valor > maxValor) { maxValor = valor; claseMax = nombre; }
     });
 
-    // 3. Actualizar tarjetas superiores
+    // 4. Actualizar tarjetas superiores
     const elTotal = document.getElementById('total-activos');
-    const elFallas = document.getElementById('total-fallas');
+    const elAsignados = document.getElementById('total-asignados');
     const elClase = document.getElementById('clase-dominante');
     const elAct = document.getElementById('ultima-act');
 
     if (elTotal) elTotal.innerText = total;
-    if (elFallas) elFallas.innerText = fallas;
+    if (elAsignados) elAsignados.innerText = conteoEstados.asignado;
     if (elClase) elClase.innerText = claseMax;
     if (elAct) elAct.innerText = `Sincronizado: ${new Date().toLocaleTimeString()}`;
 
-    // 4. INICIALIZAR GRÁFICAS (CHART.JS)
-    
-    // Gráfica de Barras (Flujo de Inventario - Datos de ejemplo basados en tu stock)
+    // 5. INICIALIZAR GRÁFICAS con limpieza de instancias previas
+    if (window.chartBarras) window.chartBarras.destroy();
+    if (window.chartDona) window.chartDona.destroy();
+
+    // Colores corporativos
+    const colores = {
+        'almacen': '#3498db',
+        'asignado': '#2ecc71',
+        'dañado': '#e74c3c',
+        'revision': '#f1c40f'
+    };
+
+    // Gráfica de Barras (Flujo Operativo: 4 estados)
     const ctxBar = document.getElementById('canvas-barras');
     if (ctxBar) {
-        new Chart(ctxBar, {
+        window.chartBarras = new Chart(ctxBar, {
             type: 'bar',
             data: {
-                labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-                datasets: [
-                    { label: 'Ingresos', data: [5, 10, 8, 15, total, 0], backgroundColor: '#2ecc71' },
-                    { label: 'Bajas', data: [1, 2, 0, 3, fallas, 0], backgroundColor: '#e74c3c' }
-                ]
+                labels: ['En Almacén', 'Asignados', 'Dañados', 'En Revisión'],
+                datasets: [{
+                    label: 'Cantidad de Equipos',
+                    data: [conteoEstados.almacen, conteoEstados.asignado, conteoEstados.dañado, conteoEstados.revision],
+                    backgroundColor: [colores.almacen, colores.asignado, colores.dañado, colores.revision],
+                    borderRadius: 5,
+                    barThickness: 65
+                }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, precision: 0 }
+                    }
+                },
+
+                plugins:{
+                    legend: {
+                        display: false
+                    }
+                }
+                
+            }
+            
         });
     }
 
-    // Gráfica de Dona (Estado General)
+    // Gráfica de Dona (Distribución por Gerencia)
     const ctxDona = document.getElementById('canvas-dona');
     if (ctxDona) {
-        new Chart(ctxDona, {
+        window.chartDona = new Chart(ctxDona, {
             type: 'doughnut',
             data: {
-                labels: ['Operativos', 'Dañados'],
+                labels: Object.keys(conteoGerencias),
                 datasets: [{
-                    data: [operativos, fallas],
-                    backgroundColor: ['#2ecc71', '#e74c3c'],
-                    borderWidth: 1
+                    data: Object.values(conteoGerencias),
+                    backgroundColor: ['#3498db', '#9b59b6', '#e67e22', '#2ecc71', '#f1c40f']
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { position: 'right' } } 
+            }
         });
     }
 }
-
 
 /**
  * Genera el formulario de registro con diseño de cuadrícula
@@ -309,9 +352,10 @@ function cargarFormularioRegistro(contenedor) {
                             <label>Estado Actual</label>
                             <select name="estado">
                                 <option value="Asignado">Asignado</option>
+                                <option value="Almacen">Almacen</option>
                                 <option value="Dañado">Dañado</option>
-                                <option value="En Revisión">En Revisión</option>
-                            </select>
+                                <option value="Revision">Revision</option>                            
+                                </select>
                         </div>
                     </div>
                 </div>
