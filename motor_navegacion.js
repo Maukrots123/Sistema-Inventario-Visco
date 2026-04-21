@@ -44,6 +44,16 @@ async function cambiarSeccion(nombreSeccion, elemento) {
             cargarFormularioRegistro(contenedor);
             await cargarOpcionesFormulario();
             break;
+        case 'actas':
+            titulo.innerText = "Actas de Entrega";
+            contenedor.innerHTML = '<p class="cargando">Cargando actas...</p>';
+            cargarInterfazActas(contenedor);
+            break;
+
+        case 'config':
+            titulo.innerText = "Configuración";
+            cargarInterfazConfig(contenedor);
+            break;
     
         default:
             contenedor.innerHTML = '<h2>Sección en Desarrollo</h2>';
@@ -279,7 +289,7 @@ function inicializarLogicaPanel() {
  */
 function cargarFormularioRegistro(contenedor) {
     contenedor.innerHTML = `
-        <div class="contenedor-formulario">
+        <div class="animacion-seccion contenedor-formulario">
             <form id="form-registro-equipo" class="grid-formulario">
                 
                 <div class="seccion-form">
@@ -514,7 +524,7 @@ async function cargarInventario(contenedor) {
 
         // 1. Inyectamos la estructura base del inventario
         let vistaHTML = `
-            <div class="contenedor-inventario">
+            <div class="animacion-seccion contenedor-inventario">
                 <div class="panel-herramientas">
                     <div class="grupo-busqueda">
                         <div class="caja-input-inventario">
@@ -817,4 +827,41 @@ function confirmarEliminacion(id) {
         console.log("Procediendo a eliminación lógica de:", id);
         // Aquí llamarías a tu API: ejecutarEliminacion(id);
     }
+}
+
+
+function cargarInterfazActas(contenedor) {
+    contenedor.innerHTML = `
+        <div class="animacion-seccion seccion-actas">
+            <h3><i class="fa-solid fa-file-contract"></i> Gestión de Actas de Entrega</h3>
+            <p>Generación y seguimiento de actas de equipos asignados.</p>
+            <div class="contenedor-acciones">
+                <button class="btn-secundario" onclick="generarReporteActas()">
+                    <i class="fa-solid fa-print"></i> Generar Acta PDF
+                </button>
+            </div>
+            <div id="lista-actas">
+                </div>
+        </div>
+    `;
+}
+
+function cargarInterfazConfig(contenedor) {
+    contenedor.innerHTML = `
+        <div class="animacion-seccion seccion-config">
+            <h3><i class="fa-solid fa-gear"></i> Configuración del Sistema</h3>
+            <div class="grid-config">
+                <div class="card-config">
+                    <h4>Mantenimiento de Catálogos</h4>
+                    <p>Administrar clases, gerencias y departamentos.</p>
+                    <button class="btn-secundario">Editar Catálogos</button>
+                </div>
+                <div class="card-config">
+                    <h4>Seguridad</h4>
+                    <p>Gestión de usuarios y niveles de acceso.</p>
+                    <button class="btn-secundario">Administrar Usuarios</button>
+                </div>
+            </div>
+        </div>
+    `;
 }

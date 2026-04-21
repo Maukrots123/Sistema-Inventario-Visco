@@ -699,6 +699,9 @@ textarea[name="observaciones"] {
     to { transform: translateY(0); opacity: 1; }
 }
 
+.animacion-seccion {
+    animation: slideIn 0.5s ease-out forwards;
+}
 
 .celda-acciones {
     display: flex;
@@ -818,3 +821,73 @@ canvas {
     max-height: 280px; /* Controla el alto para que no sea infinito */
     width: 100% !important;
 }
+
+/* --- Estilos para la sección de Actas --- */
+.seccion-actas {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.seccion-actas h3 {
+    margin-top: 0;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.contenedor-acciones {
+    margin: 20px 0;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+/* --- Estilos para la sección de Configuración --- */
+.seccion-config {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.grid-config {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.card-config {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 5px solid #3498db;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.card-config h4 {
+    margin: 0 0 10px 0;
+    color: #34495e;
+}
+
+.card-config p {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-bottom: 15px;
+}
+
+/* Botones genéricos de acción para mantener consistencia */
+.btn-secundario {
+    background-color: #95a5a6;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-secundario:hover {
+    background-color: #7f8c8d;
+}
+
