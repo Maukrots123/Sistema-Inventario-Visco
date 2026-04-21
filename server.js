@@ -68,7 +68,7 @@ app.get('/api/gerencias', async (req, res) => {
     }
 });
 
-// 4. OBTENER RESPONSABLES (Ajustado a image_71174f)
+// 4. OBTENER RESPONSABLES
 app.get('/api/responsables', async (req, res) => {
     try {
         // En tu imagen no existe 'nombre_completo', usamos nombre y apellido
@@ -77,6 +77,16 @@ app.get('/api/responsables', async (req, res) => {
     } catch (err) { 
         console.error("Error en /api/responsables:", err.message);
         res.status(500).send(err.message); 
+    }
+});
+
+// 5. OBTENER CLASES
+app.get('/api/clases', async (req, res) => {
+    try {
+        const resultado = await pool.query('SELECT id, nombre FROM clase_equipo ORDER BY nombre');
+        res.json(resultado.rows);
+    } catch (err) {
+        res.status(500).send("Error al obtener clases");
     }
 });
 

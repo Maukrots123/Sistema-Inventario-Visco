@@ -301,19 +301,20 @@ function cargarFormularioRegistro(contenedor) {
                 </div>
 
                 <div class="seccion-form">
-                    <h3><i class="fa-solid fa-layer-group"></i> Clasificación</h3>
-                    <div class="campos-grupo">
-                        <div class="campo">
-                            <label>Clase</label>
-                            <input type="text" name="clase" placeholder="Ej: Computación">
+                <h3><i class="fa-solid fa-layer-group"></i> Clasificación</h3>
+                        <div class="campos-grupo">
+                            <div class="campo">
+                                <label>Clase</label>
+                                <select name="clase" id="reg-clase" required>
+                                    <option value="">Seleccione Clase</option>
+                                    </select>
+                            </div>
+                            <div class="campo">
+                                <label>Tipo</label>
+                                <input type="text" name="tipo" placeholder="Ej: Laptop">
+                            </div>
                         </div>
-                        <div class="campo">
-                            <label>Tipo</label>
-                            <input type="text" name="tipo" placeholder="Ej: Laptop">
-                        </div>
-                        
                     </div>
-                </div>
 
                 <div class="seccion-form">
                     <h3><i class="fa-solid fa-location-dot"></i> Ubicación y Asignación</h3>
@@ -374,6 +375,23 @@ function cargarFormularioRegistro(contenedor) {
             </form>
         </div>
     `;
+}
+
+async function cargarClasesEnFormulario() {
+    try {
+        const respuesta = await fetch('/api/clases');
+        const clases = await respuesta.json();
+        const select = document.getElementById('reg-clase');
+        
+        clases.forEach(clase => {
+            const option = document.createElement('option');
+            option.value = clase.nombre; // O el ID, según lo que tu servidor espere
+            option.textContent = clase.nombre;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Error al cargar las clases:", error);
+    }
 }
 
 /**
@@ -623,55 +641,55 @@ async function cargarOpcionesFormulario() {
     const selGerencia = document.getElementById('reg-gerencia');
     const selDepto = document.getElementById('reg-departamento');
     const selResp = document.getElementById('reg-responsable');
+    const selClase = document.getElementById('reg-clase');
 
     try {
-        const [gerencias, departamentos, responsables] = await Promise.all([
-            fetch('/api/gerencias').then(r => r.json()),
-            fetch('/api/departamentos').then(r => r.json()),
-            fetch('/api/responsables').then(r => r.json())
+        // Usamos un catch individual para que una falla no bloquee a las demás
+        const [gerencias, departamentos, responsables, clases] = await Promise.all([
+            fetch('/api/gerencias').then(r => r.json()).catch(() => []),
+            fetch('/api/departamentos').then(r => r.json()).catch(() => []),
+            fetch('/api/responsables').then(r => r.json()).catch(() => []),
+            fetch('/api/clases').then(r => r.json()).catch(() => [])
         ]);
 
-        catalogoDepartamentos = departamentos; // Guardamos para filtrar luego
+        catalogoDepartamentos = departamentos;
 
-        // 1. Llenar Gerencias
-        selGerencia.innerHTML = '<option value="">Seleccione Gerencia</option>';
-        gerencias.forEach(g => {
-            selGerencia.innerHTML += `<option value="${g.id}">${g.nombre}</option>`;
-        });
+        // 1. Llenar Gerencias (solo si tenemos datos)
+        if (selGerencia) {
+            selGerencia.innerHTML = '<option value="">Seleccione Gerencia</option>';
+            gerencias.forEach(g => {
+                selGerencia.innerHTML += `<option value="${g.id}">${g.nombre}</option>`;
+            });
+        }
 
-        // 2. Llenar Responsables (Nombres, no IDs)
-        selResp.innerHTML = '<option value="">Seleccione Responsable</option>';
-        responsables.forEach(r => {
-            selResp.innerHTML += `<option value="${r.id}">${r.nombre} ${r.apellido}</option>`;
-        });
+        // 2. Llenar Responsables
+        if (selResp) {
+            selResp.innerHTML = '<option value="">Seleccione Responsable</option>';
+            responsables.forEach(r => {
+                selResp.innerHTML += `<option value="${r.id}">${r.nombre} ${r.apellido}</option>`;
+            });
+        }
 
-        // --- LÓGICA DE FILTRADO DINÁMICO ---
+        // 3. Llenar Clases
+        if (selClase) {
+            selClase.innerHTML = '<option value="">Seleccione Clase</option>';
+            clases.forEach(c => {
+                selClase.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
+            });
+        }
 
-        // Evento cuando cambia la Gerencia
+        // --- LÓGICA DE FILTRADO (Se mantiene igual) ---
         selGerencia.addEventListener('change', (e) => {
             const idGerenciaSel = e.target.value;
             selDepto.innerHTML = '<option value="">Seleccione Departamento</option>';
-            
-            // Filtramos los departamentos que pertenecen a esa gerencia
-            const filtrados = catalogoDepartamentos.filter(d => d.id == idGerenciaSel);
-            
+            const filtrados = catalogoDepartamentos.filter(d => d.id_gerencia == idGerenciaSel);
             filtrados.forEach(d => {
                 selDepto.innerHTML += `<option value="${d.id}">${d.nombre}</option>`;
             });
         });
 
-        // Evento cuando cambia el Departamento (Autocompletar Gerencia si se entra por aquí)
-        selDepto.addEventListener('change', (e) => {
-            const idDeptoSel = e.target.value;
-            const deptoEncontrado = catalogoDepartamentos.find(d => d.id == idDeptoSel);
-            
-            if (deptoEncontrado && !selGerencia.value) {
-                selGerencia.value = deptoEncontrado.id;
-            }
-        });
-
     } catch (error) {
-        console.error("Error en la carga dinámica:", error);
+        console.error("Error crítico en la carga:", error);
     }
 }
 
