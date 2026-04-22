@@ -340,13 +340,15 @@ function inicializarLogicaPanel() {
     // Gráfica de Dona (Distribución por Gerencia)
     const ctxDona = document.getElementById('canvas-dona');
     if (ctxDona) {
+        const etiquetas = Object.keys(conteoGerencias);
+        const valores = Object.values(conteoGerencias);
         window.chartDona = new Chart(ctxDona, {
             type: 'doughnut',
             data: {
                 labels: Object.keys(conteoGerencias),
                 datasets: [{
                     data: Object.values(conteoGerencias),
-                    backgroundColor: ['#3498db', '#9b59b6', '#e67e22', '#2ecc71', '#f1c40f']
+                    backgroundColor: generarColores(etiquetas.length)
                 }]
             },
             options: { 
@@ -356,6 +358,16 @@ function inicializarLogicaPanel() {
             }
         });
     }
+}
+
+function generarColores(cantidad) {
+    const colores = [];
+    for (let i = 0; i < cantidad; i++) {
+        // Genera colores distribuyendo el tono (hue) uniformemente en el círculo cromático
+        const h = Math.round((i * 360) / cantidad);
+        colores.push(`hsl(${h}, 70%, 60%)`);
+    }
+    return colores;
 }
 
 /**
