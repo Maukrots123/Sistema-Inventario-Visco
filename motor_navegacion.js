@@ -735,14 +735,13 @@ function actualizarCuerpoTabla(lista) {
 
     cuerpo.innerHTML = lista.map(equipo => {
         const fechaMod = equipo.fecha_modificacion ? new Date(equipo.fecha_modificacion).toLocaleDateString() : 'N/A';
-        const fmoId = equipo.fmo || 'S/N';
         const estadoClase = equipo.estado?.toLowerCase() || 'desconocido';
         
         return `
             <tr>
                 <td>${equipo.clase || '-'}</td>
                 <td>${equipo.tipo || '-'}</td>
-                <td><strong>${fmoId}</strong></td>
+                <td>${equipo.fmo || '-'}</td>
                 <td>${equipo.serial || '-'}</td>
                 <td>${equipo.marca || '-'}</td>
                 <td><span class="etiqueta-estado ${estadoClase}">${equipo.estado || 'N/A'}</span></td>
@@ -758,22 +757,43 @@ function actualizarCuerpoTabla(lista) {
                 <td>${fechaMod}</td>
                 <td>${equipo.usuario_modificacion || 'Sistema'}</td>
                 <td class="celda-acciones">
-                    <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${fmoId}')">
+                    <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${equipo.id}')">
                         <i class="fa-solid fa-eye"></i>
                     </button>
-                    <button class="btn-mini btn-archivo" title="Subir Imágenes" onclick="abrirInterfazRegistro('subir_archivo', '${fmoId}')">
+                    <button class="btn-mini btn-archivo" title="Subir Imágenes" onclick="abrirInterfazRegistro('subir_archivo', '${equipo.id}')">
                         <i class="fa-solid fa-images"></i>
                     </button>
-                    <button class="btn-mini btn-editar" title="Modificar" onclick="abrirInterfazRegistro('editar_equipo', '${fmoId}')">
+                    <button class="btn-mini btn-editar" title="Modificar" onclick="abrirInterfazRegistro('editar_equipo', '${equipo.id}')">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
-                    <button class="btn-mini btn-eliminar" title="Eliminar" onclick="confirmarEliminar('${fmoId}')">
+                    <button class="btn-mini btn-eliminar" title="Eliminar" onclick="confirmarEliminar('${equipo.id}')">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+
+// Asegúrate de que esta función esté definida de forma global
+function confirmarEliminar(id) {
+    if (confirm("¿Estás seguro de que deseas eliminar este registro?")) {
+        // Aquí llamas a tu API para eliminar
+        fetch(`/api/equipos/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                alert("Registro eliminado correctamente.");
+                // Recargar la tabla o remover la fila
+                location.reload(); 
+            } else {
+                alert("Error al eliminar el registro.");
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
 }
 /**
  * Variables globales para almacenar los catálogos y filtrar localmente

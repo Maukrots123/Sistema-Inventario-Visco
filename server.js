@@ -15,6 +15,7 @@ app.get('/api/equipos', async (req, res) => {
     try {
         const query = `
             SELECT 
+                e.id,
                 e.fmo, 
                 e.serial, 
                 e.marca, 
@@ -257,6 +258,46 @@ app.get('/api/auditoria', async (req, res) => {
         res.json(resultado.rows);
     } catch (err) {
         res.status(500).send("Error al consultar auditoría");
+    }
+});
+
+
+// ELIMINAR usando ID
+app.delete('/api/equipos/:id', async (req, res) => {
+    try {
+        // Asegúrate de que aquí el filtro sea por id, no por fmo
+        await pool.query('DELETE FROM equipo WHERE id = $1', [req.params.id]);
+        res.status(200).send("Eliminado correctamente");
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+// OBTENER para editar usando ID
+app.get('/api/equipos/:id', async (req, res) => {
+    try {
+        const resDB = await pool.query('SELECT * FROM equipo WHERE id = $1', [req.params.id]);
+        res.json(resDB.rows[0]);
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+
+app.put('/api/equipos/:id', async (req, res) => {
+    const { id } = req.params;
+    const { serial, marca, estado, id_responsable, observaciones } = req.body;
+
+    try {
+        const query = `
+            UPDATE equipo 
+            SET serial = $1, marca = $2, estado = $3, id_responsable = $4, observaciones = $5, fecha_modificacion = NOW()
+            WHERE id = $6
+        `;
+        await pool.query(query, [serial, marca, estado, id_responsable, observaciones, id]);
+        res.status(200).json({ message: "Equipo actualizado con éxito" });
+    } catch (err) {
+        res.status(500).json({ error: "Error al actualizar: " + err.message });
     }
 });
 
