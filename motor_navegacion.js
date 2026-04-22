@@ -93,6 +93,7 @@ function cargarInterfazPanel(contenedor) {
 
                     <div class="chart-box">
                         <h3><i class="fa-solid fa-chart-pie"></i> Estado General</h3>
+                        <h5 class="subtitle-chart">Distribución por Gerencia</h5>
                         <canvas id="canvas-dona"></canvas>
                     </div>
                 </div>
