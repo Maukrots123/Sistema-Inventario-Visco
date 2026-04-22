@@ -234,6 +234,31 @@ app.post('/api/clases', async (req, res) => {
     }
 });
 
+app.get('/api/auditoria', async (req, res) => {
+    const { fecha_inicio, fecha_fin } = req.query;
+
+    try {
+        const query = `
+            SELECT 
+                e.fmo, 
+                e.serial, 
+                c.nombre AS clase_nombre, 
+                e.tipo, 
+                e.estado, 
+                e.fecha_modificacion, 
+                CONCAT(r.nombre, ' ', r.apellido) AS responsable_completo
+            FROM equipo e
+            LEFT JOIN clase_equipo c ON e.id_clase = c.id
+            LEFT JOIN responsable r ON e.id_responsable = r.id
+            WHERE e.fecha_modificacion::date BETWEEN $1 AND $2 
+            ORDER BY e.fecha_modificacion DESC
+        `;
+        const resultado = await pool.query(query, [fecha_inicio, fecha_fin]);
+        res.json(resultado.rows);
+    } catch (err) {
+        res.status(500).send("Error al consultar auditoría");
+    }
+});
 
 
 // Iniciar servidor en el puerto 3000

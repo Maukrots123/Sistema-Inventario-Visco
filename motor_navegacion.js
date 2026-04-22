@@ -147,20 +147,91 @@ function cargarInterfazPanel(contenedor) {
                         <thead>
                             <tr>
                                 <th>FMO</th>
-                                <th>Tipo / Marca</th>
+                                <th>Serial</th>
+                                <th>Clase</th>
+                                <th>Tipo</th>
                                 <th>Estado</th>
                                 <th>Fecha Mov.</th>
                                 <th>Operador / Responsable</th> 
                             </tr>
                         </thead>
                         <tbody id="body-auditoria">
-                            <tr><td colspan="5" class="empty-state">Inicie una consulta de auditoría</td></tr>
+                            <tr><td colspan="7" class="empty-state">Inicie una consulta de auditoría</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
     `;
+}
+
+/**
+ * Lógica funcional para la Auditoría de Movimientos
+ */
+
+// 1. Función genérica para llamar a la API
+async function obtenerDatosAuditoria(fechaInicio, fechaFin) {
+    const tbody = document.getElementById('body-auditoria');
+    tbody.innerHTML = '<tr><td colspan="5">Cargando datos...</td></tr>';
+
+    try {
+        const url = `/api/auditoria?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        tbody.innerHTML = ''; // Limpiar mensaje de carga
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No se encontraron movimientos en este rango.</td></tr>';
+            return;
+        }
+
+        data.forEach(item => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.fmo || 'N/A'}</td>
+                    <td>${item.serial}</td>
+                    <td>${item.clase_nombre || 'N/A'}</td>
+                    <td>${item.tipo}</td>
+                    <td>${item.estado}</td>
+                    <td>${new Date(item.fecha_modificacion).toLocaleString()}</td>
+                    <td>${item.responsable_completo || 'N/A'}</td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error("Error cargando auditoría:", error);
+        tbody.innerHTML = '<tr><td colspan="7" style="color:red" class="empty-state">Error al cargar la auditoría.</td></tr>';
+    }
+}
+
+// 2. Función para los botones 1D, 7D, 1M
+function cargarAuditoria(dias) {
+    const hoy = new Date();
+    const fechaFin = hoy.toISOString().split('T')[0]; // Fecha actual
+    
+    const inicio = new Date();
+    inicio.setDate(hoy.getDate() - dias);
+    const fechaInicio = inicio.toISOString().split('T')[0];
+
+    // Actualizamos los inputs visualmente (opcional)
+    document.getElementById('fecha-inicio').value = fechaInicio;
+    document.getElementById('fecha-fin').value = fechaFin;
+
+    obtenerDatosAuditoria(fechaInicio, fechaFin);
+}
+
+// 3. Función para el botón de búsqueda con lupa
+function consultarFechasPersonalizadas() {
+    const inicio = document.getElementById('fecha-inicio').value;
+    const fin = document.getElementById('fecha-fin').value;
+
+    if (!inicio || !fin) {
+        alert("Por favor selecciona ambas fechas.");
+        return;
+    }
+    
+    obtenerDatosAuditoria(inicio, fin);
 }
 
 /**
