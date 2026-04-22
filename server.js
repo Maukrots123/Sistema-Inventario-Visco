@@ -43,55 +43,7 @@ app.get('/api/equipos', async (req, res) => {
     }
 });
 
-// 2. OBTENER DEPARTAMENTOS 
-app.get('/api/departamentos', async (req, res) => {
-    try {
-        // En tu imagen las columnas son: id, nombre, id_gerencia
-        const query = 'SELECT id, nombre, id_gerencia FROM departamento ORDER BY nombre';
-        const resDB = await pool.query(query);
-        res.json(resDB.rows);
-    } catch (err) { 
-        console.error("Error en /api/departamentos:", err.message);
-        res.status(500).send(err.message); 
-    }
-});
-
-// 3. OBTENER GERENCIAS (Ajustado a image_7d5272)
-app.get('/api/gerencias', async (req, res) => {
-    try {
-        // En tu imagen las columnas son: id, nombre
-        const resDB = await pool.query('SELECT id, nombre FROM gerencia ORDER BY nombre');
-        res.json(resDB.rows);
-    } catch (err) { 
-        console.error("Error en /api/gerencias:", err.message);
-        res.status(500).send(err.message); 
-    }
-});
-
-// 4. OBTENER RESPONSABLES
-app.get('/api/responsables', async (req, res) => {
-    try {
-        // En tu imagen no existe 'nombre_completo', usamos nombre y apellido
-        const resDB = await pool.query('SELECT id, cedula, nombre, apellido FROM responsable ORDER BY nombre');
-        res.json(resDB.rows);
-    } catch (err) { 
-        console.error("Error en /api/responsables:", err.message);
-        res.status(500).send(err.message); 
-    }
-});
-
-// 5. OBTENER CLASES
-app.get('/api/clases', async (req, res) => {
-    try {
-        const resultado = await pool.query('SELECT id, nombre FROM clase_equipo ORDER BY nombre');
-        res.json(resultado.rows);
-    } catch (err) {
-        res.status(500).send("Error al obtener clases");
-    }
-});
-
-
-// RUTA PARA REGISTRAR UN NUEVO EQUIPO
+// POST NUEVO EQUIPO
 app.post('/api/equipos', async (req, res) => {
     const { fmo, serial, tipo, clase, marca, modelo, departamento, responsable, estado, observaciones } = req.body;
 
@@ -133,6 +85,156 @@ app.post('/api/equipos', async (req, res) => {
         res.status(500).json({ error: 'Error en el proceso dinámico: ' + err.message });
     }
 });
+
+// 2. OBTENER DEPARTAMENTOS 
+app.get('/api/departamentos', async (req, res) => {
+    try {
+        // En tu imagen las columnas son: id, nombre, id_gerencia
+        const query = 'SELECT id, nombre, id_gerencia FROM departamento ORDER BY nombre';
+        const resDB = await pool.query(query);
+        res.json(resDB.rows);
+    } catch (err) { 
+        console.error("Error en /api/departamentos:", err.message);
+        res.status(500).send(err.message); 
+    }
+});
+
+// 2. GUARDAR NUEVO DEPARTAMENTO
+app.post('/api/departamentos', async (req, res) => {
+    try {
+        const { nombre, centro_costo, id_gerencia } = req.body;
+
+        if (!nombre || !centro_costo || !id_gerencia) {
+            return res.status(400).send("Faltan campos obligatorios: nombre, centro_costo o id_gerencia");
+        }
+
+        const query = `
+            INSERT INTO departamento (nombre, centro_costo, id_gerencia) 
+            VALUES ($1, $2, $3) 
+            RETURNING id
+        `;
+        
+        const resultado = await pool.query(query, [nombre, centro_costo, id_gerencia]);
+        
+        res.status(201).json({ 
+            id: resultado.rows[0].id, 
+            mensaje: "Departamento registrado exitosamente" 
+        });
+    } catch (err) {
+        console.error("Error al registrar departamento:", err.message);
+        res.status(500).send("Error interno al registrar el departamento");
+    }
+});
+
+// 3. OBTENER GERENCIAS (Ajustado a image_7d5272)
+app.get('/api/gerencias', async (req, res) => {
+    try {
+        // En tu imagen las columnas son: id, nombre
+        const resDB = await pool.query('SELECT id, nombre FROM gerencia ORDER BY nombre');
+        res.json(resDB.rows);
+    } catch (err) { 
+        console.error("Error en /api/gerencias:", err.message);
+        res.status(500).send(err.message); 
+    }
+});
+
+// 3. GUARDAR NUEVA GERENCIA
+app.post('/api/gerencias', async (req, res) => {
+    try {
+        const { nombre } = req.body;
+
+        if (!nombre) {
+            return res.status(400).send("El nombre de la gerencia es obligatorio");
+        }
+
+        const query = `
+            INSERT INTO gerencia (nombre) 
+            VALUES ($1) 
+            RETURNING id
+        `;
+        
+        const resultado = await pool.query(query, [nombre]);
+        
+        res.status(201).json({ 
+            id: resultado.rows[0].id, 
+            mensaje: "Gerencia registrada exitosamente" 
+        });
+    } catch (err) {
+        console.error("Error al registrar gerencia:", err.message);
+        res.status(500).send("Error interno al registrar la gerencia");
+    }
+});
+
+// 4. OBTENER RESPONSABLES
+app.get('/api/responsables', async (req, res) => {
+    try {
+        // En tu imagen no existe 'nombre_completo', usamos nombre y apellido
+        const resDB = await pool.query('SELECT id, cedula, nombre, apellido FROM responsable ORDER BY nombre');
+        res.json(resDB.rows);
+    } catch (err) { 
+        console.error("Error en /api/responsables:", err.message);
+        res.status(500).send(err.message); 
+    }
+});
+
+// 4. GUARDAR NUEVO RESPONSABLE
+app.post('/api/responsables', async (req, res) => {
+    try {
+        const { cedula, nombre, apellido, id_departamento } = req.body;
+
+        // Validamos que los datos requeridos no lleguen vacíos
+        if (!cedula || !nombre || !apellido || !id_departamento) {
+            return res.status(400).send("Todos los campos son obligatorios");
+        }
+
+        const query = `
+            INSERT INTO responsable (cedula, nombre, apellido, id_departamento) 
+            VALUES ($1, $2, $3, $4) 
+            RETURNING id
+        `;
+        
+        const resultado = await pool.query(query, [cedula, nombre, apellido, id_departamento]);
+        
+        res.status(201).json({ 
+            id: resultado.rows[0].id, 
+            mensaje: "Responsable registrado exitosamente" 
+        });
+
+    } catch (err) {
+        console.error("Error al registrar responsable:", err.message);
+        res.status(500).send("Error interno al registrar el responsable");
+    }
+});
+
+
+
+// 5. OBTENER CLASES
+app.get('/api/clases', async (req, res) => {
+    try {
+        const resultado = await pool.query('SELECT id, nombre FROM clase_equipo ORDER BY nombre');
+        res.json(resultado.rows);
+    } catch (err) {
+        res.status(500).send("Error al obtener clases");
+    }
+});
+
+// POST CLASES 
+app.post('/api/clases', async (req, res) => {
+    try {
+        const { nombre } = req.body;
+        // Inserta en la tabla correcta
+        const resultado = await pool.query(
+            'INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', 
+            [nombre]
+        );
+        res.status(201).json({ id: resultado.rows[0].id, nombre });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al guardar la clase");
+    }
+});
+
+
 
 // Iniciar servidor en el puerto 3000
 const PORT = 3000;

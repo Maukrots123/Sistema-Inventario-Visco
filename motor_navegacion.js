@@ -96,20 +96,23 @@ function cargarInterfazPanel(contenedor) {
                         <canvas id="canvas-dona"></canvas>
                     </div>
                 </div>
-
+        
                 <div class="quick-actions">
                     <h3>Acciones Rápidas</h3>
                     <button onclick="document.querySelector('[onclick*=\\'registro\\']').click()" class="btn-dash-action success">
                         <i class="fa-solid fa-plus"></i> Registrar Nuevo Equipo
                     </button>
                     <button onclick="abrirInterfazRegistro('clase')" class="btn-dash-action alt">
-                        <i class="fa-solid fa-layer-group"></i> Nueva Clase / Tipo
+                        <i class="fa-solid fa-layer-group"></i> Nueva Clase
                     </button>
                     <button onclick="abrirInterfazRegistro('responsable')" class="btn-dash-action alt">
                         <i class="fa-solid fa-user-plus"></i> Nuevo Responsable
                     </button>
                     <button onclick="abrirInterfazRegistro('gerencia')" class="btn-dash-action alt">
-                        <i class="fa-solid fa-sitemap"></i> Nueva Gerencia / Depto.
+                        <i class="fa-solid fa-sitemap"></i> Nueva Gerencia
+                    </button>
+                    <button onclick="abrirInterfazRegistro('departamento')" class="btn-dash-action alt">
+                        <i class="fa-solid fa-sitemap"></i> Nuevo Departamento
                     </button>
                     <button onclick="generarReportePDF()" class="btn-dash-action info">
                         <i class="fa-solid fa-file-pdf"></i> Generar Reporte PDF
@@ -411,12 +414,14 @@ function abrirInterfazRegistro(tipo) {
     let htmlFormulario = "";
     let icono = "";
     let titulo = "";
+    let endpoint = ""; // Variable para definir la ruta de la API
 
     // Definición de campos basada en tus tablas de la base de datos
     switch (tipo) {
         case 'clase':
             titulo = "Registrar Nueva Clase";
             icono = "fa-layer-group";
+            endpoint = "/api/clases"; // Aquí apuntas a la tabla correcta
             htmlFormulario = `
                 <div class="campo">
                     <label>Nombre de la Clase</label>
@@ -427,6 +432,7 @@ function abrirInterfazRegistro(tipo) {
         case 'responsable':
             titulo = "Registrar Nuevo Responsable";
             icono = "fa-user-plus";
+            endpoint = "/api/responsables";
             htmlFormulario = `
                 <div class="campo">
                     <label>Cédula</label>
@@ -441,14 +447,17 @@ function abrirInterfazRegistro(tipo) {
                     <input type="text" name="apellido" placeholder="Apellido" required>
                 </div>
                 <div class="campo">
-                    <label>ID Departamento</label>
-                    <input type="number" name="id_departamento" required>
+                <label>Departamento</label>
+                    <select name="id_departamento" id="select-deptos" required>
+                        <option value="">Cargando departamentos...</option>
+                    </select>
                 </div>`;
             break;
 
         case 'gerencia':
             titulo = "Registrar Nueva Gerencia";
             icono = "fa-sitemap"; // Icono de jerarquía/organización
+            endpoint = "/api/gerencias";
             htmlFormulario = `
                 <div class="campo">
                     <label>Nombre de la Gerencia</label>
@@ -459,6 +468,7 @@ function abrirInterfazRegistro(tipo) {
         case 'departamento':
             titulo = "Registrar Nuevo Departamento";
             icono = "fa-sitemap";
+            endpoint = "/api/departamentos";
             htmlFormulario = `
                 <div class="campo">
                     <label>Nombre del Departamento</label>
@@ -501,15 +511,47 @@ function abrirInterfazRegistro(tipo) {
 
     document.body.appendChild(overlay);
 
+    
+
     // Lógica de envío
-    document.getElementById('form-maestro-dinamico').onsubmit = (e) => {
+    document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const datos = Object.fromEntries(formData.entries());
-        console.log(`Enviando registro de ${tipo}:`, datos);
-        // Aquí llamarías a tu función de guardado en BD
-        // procesarRegistroMaestro(tipo, datos);
+        const datos = Object.fromEntries(new FormData(e.target));
+
+        try {
+            const respuesta = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            if (respuesta.ok) {
+                alert("Registro exitoso en " + endpoint);
+                overlay.remove(); // Cerramos el modal
+            } else {
+                alert("Error al guardar en el servidor");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
     };
+
+    if (tipo === 'responsable') {
+    const selectDeptos = document.getElementById('select-deptos');
+    
+    fetch('/api/departamentos') // Ajusta este endpoint según tu API
+        .then(res => res.json())
+        .then(datos => {
+            selectDeptos.innerHTML = '<option value="">Seleccione un departamento</option>';
+            datos.forEach(d => {
+                selectDeptos.innerHTML += `<option value="${d.id}">${d.nombre}</option>`;
+            });
+        })
+        .catch(err => {
+            console.error("Error al cargar deptos:", err);
+            selectDeptos.innerHTML = '<option value="">Error al cargar</option>';
+        });
+    }
 }
 
 
