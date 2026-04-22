@@ -479,8 +479,10 @@ function abrirInterfazRegistro(tipo) {
                     <input type="text" name="centro_costo" required>
                 </div>
                 <div class="campo">
-                    <label>ID Gerencia</label>
-                    <input type="number" name="id_gerencia" required>
+                    <label>Gerencia</label>
+                    <select name="id_gerencia" id="select-gerencias" required>
+                        <option value="">Cargando gerencias...</option>
+                    </select>
                 </div>`;
             break;
             
@@ -536,22 +538,26 @@ function abrirInterfazRegistro(tipo) {
         }
     };
 
-    if (tipo === 'responsable') {
-    const selectDeptos = document.getElementById('select-deptos');
+    // Lógica de carga para Responsable y Departamento
+if (tipo === 'responsable' || tipo === 'departamento') {
+    const select = document.getElementById(tipo === 'responsable' ? 'select-deptos' : 'select-gerencias');
+    const endpointFetch = tipo === 'responsable' ? '/api/departamentos' : '/api/gerencias';
     
-    fetch('/api/departamentos') // Ajusta este endpoint según tu API
-        .then(res => res.json())
-        .then(datos => {
-            selectDeptos.innerHTML = '<option value="">Seleccione un departamento</option>';
-            datos.forEach(d => {
-                selectDeptos.innerHTML += `<option value="${d.id}">${d.nombre}</option>`;
+    if (select) {
+        fetch(endpointFetch)
+            .then(res => res.json())
+            .then(datos => {
+                select.innerHTML = '<option value="">Seleccione...</option>';
+                datos.forEach(item => {
+                    select.innerHTML += `<option value="${item.id}">${item.nombre}</option>`;
+                });
+            })
+            .catch(err => {
+                console.error("Error al cargar datos:", err);
+                select.innerHTML = '<option value="">Error al cargar</option>';
             });
-        })
-        .catch(err => {
-            console.error("Error al cargar deptos:", err);
-            selectDeptos.innerHTML = '<option value="">Error al cargar</option>';
-        });
     }
+}
 }
 
 
