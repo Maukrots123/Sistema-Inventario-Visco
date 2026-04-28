@@ -2,10 +2,68 @@ const express = require('express');
 const app = express();
 const pool = require('./db'); // Importas tu conexión
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const session = require('express-session');
+
+app.use(session({
+    secret: 'clave_secreta_de_visco_2026', // Cámbiala por algo único
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // Pon 'true' si usas HTTPS en producción
+}));
 
 app.use(express.json());
 // Servir tus archivos estáticos (HTML, CSS, JS)
 app.use(express.static(__dirname));
+
+// Redireccionar la ruta raíz al login
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+
+app.post('/api/registrar-usuario', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        // Encriptamos la contraseña con un factor de costo de 10
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        await pool.query('INSERT INTO usuarios (username, password) VALUES ($1, $2)', 
+            [username, hashedPassword]);
+            
+        res.status(201).send("Usuario registrado correctamente");
+    } catch (err) {
+        res.status(500).send("Error al registrar: " + err.message);
+    }
+});
+
+// Middleware para proteger rutas
+function verificarSesion(req, res, next) {
+    if (req.session.usuarioId) {
+        next(); // Está logueado, adelante
+    } else {
+        res.status(403).send("Acceso denegado: Inicia sesión primero");
+    }
+}
+
+// Login
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const usuarioDB = await pool.query('SELECT * FROM usuarios WHERE username = $1', [username]);
+        
+        if (usuarioDB.rows.length === 0) return res.status(401).send("Credenciales incorrectas");
+
+        const usuario = usuarioDB.rows[0];
+        const esValida = await bcrypt.compare(password, usuario.password);
+
+        if (!esValida) return res.status(401).send("Credenciales incorrectas");
+
+        req.session.usuarioId = usuario.id;
+        res.status(200).send("Bienvenido");
+    } catch (err) {
+        res.status(500).send("Error en el login");
+    }
+});
 
 // RUTA PARA OBTENER LOS EQUIPOS DESDE POSTGRES
 // ... (parte inicial del código igual)
@@ -263,13 +321,24 @@ app.get('/api/auditoria', async (req, res) => {
 
 
 // ELIMINAR usando ID
+// ELIMINAR usando ID corregido
 app.delete('/api/equipos/:id', async (req, res) => {
+    // Limpiamos el ID directamente al recibirlo
+    const id = req.params.id.toString().replace(/\D/g, ''); 
+    
+    console.log("Servidor procesando eliminación para ID:", id);
+
     try {
-        // Asegúrate de que aquí el filtro sea por id, no por fmo
-        await pool.query('DELETE FROM equipo WHERE id = $1', [req.params.id]);
+        const resultado = await pool.query('DELETE FROM equipo WHERE id = $1', [id]);
+        
+        if (resultado.rowCount === 0) {
+            return res.status(404).send("Registro no encontrado");
+        }
+
         res.status(200).send("Eliminado correctamente");
     } catch (err) {
-        res.status(500).send(err.message);
+        console.error("Error en DELETE:", err.message);
+        res.status(500).send("Error interno al eliminar");
     }
 });
 
@@ -300,6 +369,7 @@ app.put('/api/equipos/:id', async (req, res) => {
         res.status(500).json({ error: "Error al actualizar: " + err.message });
     }
 });
+
 
 
 // Iniciar servidor en el puerto 3000
