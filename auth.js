@@ -1,25 +1,26 @@
 document.querySelector('.formulario-acceso').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const usuario = document.getElementById('usuario').value;
-    const clave = document.getElementById('clave').value;
+    const username = document.getElementById('usuario').value;
+    const password = document.getElementById('clave').value;
+    // Capturamos el estado del checkbox (true o false)
+    const recordar = document.getElementById('recordarme').checked;
 
     try {
-        const respuesta = await fetch('/api/login', {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: usuario, password: clave })
+            body: JSON.stringify({ username, password, recordar }) // Enviamos 'recordar'
         });
 
-        if (respuesta.ok) {
-            // Guardamos que el usuario está autenticado en el navegador
-            sessionStorage.setItem('autenticado', 'true');
-            window.location.href = 'index.html';
+        const data = await response.json();
+
+        if (response.ok) {
+            window.location.href = 'index.html'; // O la página principal del sistema
         } else {
-            const mensaje = await respuesta.text();
-            alert("Acceso denegado: " + mensaje);
+            alert(data || "Error al iniciar sesión");
         }
-    } catch (err) {
-        alert("Error de conexión con el servidor");
+    } catch (error) {
+        console.error("Error:", error);
     }
 });

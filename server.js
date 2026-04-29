@@ -5,14 +5,21 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 
+// En la configuración inicial de tu session middleware
 app.use(session({
-    secret: 'clave_secreta_de_visco_2026', // Cámbiala por algo único
+    secret: 'clave_secreta_de_visco_2026',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // Pon 'true' si usas HTTPS en producción
+    cookie: { 
+        secure: false, // Cambiar a true si usas HTTPS
+        httpOnly: true // Por seguridad
+        // NO pongas maxAge aquí para que por defecto sea de sesión
+    }
 }));
 
 app.use(express.json());
+
+
 // Servir tus archivos estáticos (HTML, CSS, JS)
 app.use(express.static(__dirname));
 
@@ -36,6 +43,15 @@ function esAdmin(req, res, next) {
         res.status(403).send("Acceso denegado: Esta acción requiere permisos de administrador.");
     }
 }
+
+// Endpoint para que el frontend verifique si hay sesión al cargar la página
+app.get('/api/verificar-sesion', (req, res) => {
+    if (req.session.usuarioId) {
+        res.json({ logueado: true, rol: req.session.rol });
+    } else {
+        res.status(401).json({ logueado: false });
+    }
+});
 
 // Redireccionar la ruta raíz al login
 app.get('/', (req, res) => {
@@ -70,12 +86,9 @@ app.post('/api/registrar-usuario', verificarSesion, esAdmin, async (req, res) =>
 
 // API DE LOGIN ACTUALIZADA Y SEGURA
 app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    console.log("Intentando loguear con usuario_nombre:", username); 
+    const { username, password, recordar } = req.body; 
 
     try {
-        // 1. Buscamos específicamente en la columna 'usuario_nombre'
-        // que configuramos en el nuevo esquema de la base de datos
         const query = 'SELECT * FROM usuario WHERE usuario_nombre = $1';
         const usuarioDB = await pool.query(query, [username]);
         
@@ -84,14 +97,20 @@ app.post('/api/login', async (req, res) => {
         }
 
         const usuario = usuarioDB.rows[0];
-
-        // 2. Comparamos la contraseña en texto plano con el hash guardado en BD
         const esValida = await bcrypt.compare(password, usuario.clave);
 
         if (esValida) {
-            // 3. Crear la sesión con los datos correctos
             req.session.usuarioId = usuario.id;
             req.session.rol = usuario.rol; 
+
+            // Lógica de "Recordar siempre" condicional:
+            if (recordar) {
+                // Si el usuario marcó la casilla, la cookie vive 1 año
+                req.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 365; 
+            } else {
+                // Si no la marcó, la sesión expira al cerrar el navegador
+                req.session.cookie.maxAge = null;
+            }
             
             return res.status(200).json({ 
                 mensaje: "Bienvenido",
@@ -100,18 +119,11 @@ app.post('/api/login', async (req, res) => {
         } else {
             return res.status(401).send("Usuario o contraseña incorrectos");
         }
-
     } catch (err) {
         console.error("Error en login:", err.message);
         res.status(500).send("Error interno del servidor");
     }
 });
-
-
-
-
-
-
 
 // RUTA PARA OBTENER LOS EQUIPOS DESDE POSTGRES
 // ... (parte inicial del código igual)
@@ -419,14 +431,24 @@ app.put('/api/equipos/:id',verificarSesion, async (req, res) => {
 });
 
 
-app.post('/api/logout',verificarSesion, (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).send("No se pudo cerrar la sesión");
-        }
-        res.clearCookie('connect.sid'); // Limpia la cookie de sesión de Express
-        res.status(200).send("Sesión cerrada");
-    });
+app.post('/api/logout', (req, res) => {
+    // Verificamos si existe la sesión antes de intentar destruirla
+    if (req.session) {
+        req.session.destroy((err) => {
+            if (err) {
+                console.error("Error al destruir sesión:", err);
+                return res.status(500).send("Error al cerrar sesión");
+            }
+            
+            // Limpiamos la cookie y confirmamos
+            res.clearCookie('connect.sid');
+            return res.status(200).send("Sesión cerrada");
+        });
+    } else {
+        // Si no hay sesión, igual limpiamos la cookie por si acaso y respondemos OK
+        res.clearCookie('connect.sid');
+        res.status(200).send("Sesión ya estaba cerrada");
+    }
 });
 
 
