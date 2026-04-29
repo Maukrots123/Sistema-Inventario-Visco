@@ -47,24 +47,39 @@ function verificarSesion(req, res, next) {
 
 // Login
 app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
+    // Usamos 'username' del formulario para buscar en la columna 'nombre'
+    const { username, password } = req.body; 
+
     try {
-        const usuarioDB = await pool.query('SELECT * FROM usuarios WHERE username = $1', [username]);
+        // Buscamos en tu tabla 'usuario' (singular) usando la columna 'nombre'
+        const query = 'SELECT * FROM usuario WHERE nombre = $1';
+        const usuarioDB = await pool.query(query, [username]);
         
-        if (usuarioDB.rows.length === 0) return res.status(401).send("Credenciales incorrectas");
+        if (usuarioDB.rows.length === 0) {
+            return res.status(401).send("Usuario no encontrado");
+        }
 
         const usuario = usuarioDB.rows[0];
-        const esValida = await bcrypt.compare(password, usuario.password);
 
-        if (!esValida) return res.status(401).send("Credenciales incorrectas");
+        /* IMPORTANTE: En tu imagen la clave es "mau" (texto plano).
+           Si aún no has usado bcrypt para registrar, usa esta comparación temporal:
+        */
+        if (password === usuario.clave) {
+            req.session.usuarioId = usuario.id;
+            return res.status(200).send("Bienvenido");
+        } else {
+            return res.status(401).send("Contraseña incorrecta");
+        }
 
-        req.session.usuarioId = usuario.id;
-        res.status(200).send("Bienvenido");
+        /* Cuando ya tengas claves encriptadas, activarás esto:
+           const esValida = await bcrypt.compare(password, usuario.clave);
+        */
+
     } catch (err) {
-        res.status(500).send("Error en el login");
+        console.error("Error en login:", err.message);
+        res.status(500).send("Error en el servidor");
     }
 });
-
 // RUTA PARA OBTENER LOS EQUIPOS DESDE POSTGRES
 // ... (parte inicial del código igual)
 

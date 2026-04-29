@@ -1,5 +1,5 @@
 document.querySelector('.formulario-acceso').addEventListener('submit', async (e) => {
-    e.preventDefault(); // Evita que la página se recargue
+    e.preventDefault();
 
     const usuario = document.getElementById('usuario').value;
     const clave = document.getElementById('clave').value;
@@ -12,15 +12,14 @@ document.querySelector('.formulario-acceso').addEventListener('submit', async (e
         });
 
         if (respuesta.ok) {
-            // Si el login es exitoso, redirigimos al sistema
+            // Guardamos que el usuario está autenticado en el navegador
+            sessionStorage.setItem('autenticado', 'true');
             window.location.href = 'index.html';
         } else {
-            // Manejo de errores (ej. usuario o clave incorrecta)
-            const error = await respuesta.text();
-            alert("Error: " + error);
+            const mensaje = await respuesta.text();
+            alert("Acceso denegado: " + mensaje);
         }
     } catch (err) {
-        console.error("Error al conectar con el servidor:", err);
-        alert("No se pudo conectar con el servidor. Intenta más tarde.");
+        alert("Error de conexión con el servidor");
     }
 });
