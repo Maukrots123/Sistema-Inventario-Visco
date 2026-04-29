@@ -54,6 +54,11 @@ async function cambiarSeccion(nombreSeccion, elemento) {
             titulo.innerText = "Configuración";
             cargarInterfazConfig(contenedor);
             break;
+
+        case 'cerrar_sesion':
+            titulo.innerText = "Cerrar Sesion";
+            cerrarSesion(contenedor);
+            break;
     
         default:
             contenedor.innerHTML = '<h2>Sección en Desarrollo</h2>';
@@ -1107,3 +1112,19 @@ function ejecutarGeneracionPDF() {
     cerrarModal();
 }
 
+function cerrarSesion() {
+    // 1. Limpiamos el almacenamiento local y de sesión
+    sessionStorage.removeItem('autenticado');
+    localStorage.clear();
+
+    // 2. Avisamos al servidor que destruya la sesión en la base de datos/memoria
+    fetch('/api/logout', { method: 'POST' })
+        .then(() => {
+            // 3. Redirigimos al login
+            window.location.href = 'login.html';
+            
+            // 4. LÍNEA CRÍTICA: Limpiamos el historial de navegación
+            // Esto reemplaza la página actual por el login, evitando que el botón "Atrás" funcione
+            window.history.replaceState(null, '', 'login.html');
+        });
+}

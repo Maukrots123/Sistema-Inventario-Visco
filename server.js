@@ -16,12 +16,33 @@ app.use(express.json());
 // Servir tus archivos estáticos (HTML, CSS, JS)
 app.use(express.static(__dirname));
 
+
+// --- MIDDLEWARES DE SEGURIDAD ---
+
+// 1. Verifica si el usuario ha iniciado sesión (Autenticación)
+function verificarSesion(req, res, next) {
+    if (req.session.usuarioId) {
+        next(); // Tiene sesión, puede continuar
+    } else {
+        res.status(403).send("Acceso denegado: Debes iniciar sesión primero.");
+    }
+}
+
+// 2. Verifica si el usuario es administrador (Autorización)
+function esAdmin(req, res, next) {
+    if (req.session.rol === 'admin') {
+        next(); // Es admin, puede continuar
+    } else {
+        res.status(403).send("Acceso denegado: Esta acción requiere permisos de administrador.");
+    }
+}
+
 // Redireccionar la ruta raíz al login
 app.get('/', (req, res) => {
     res.redirect('/login.html');
 });
 
-app.post('/api/registrar-usuario', async (req, res) => {
+app.post('/api/registrar-usuario',verificarSesion, esAdmin, async (req, res) => {
     const { username, password } = req.body;
     try {
         // Encriptamos la contraseña con un factor de costo de 10
@@ -36,47 +57,26 @@ app.post('/api/registrar-usuario', async (req, res) => {
     }
 });
 
-// Middleware para proteger rutas
-function verificarSesion(req, res, next) {
-    if (req.session.usuarioId) {
-        next(); // Está logueado, adelante
-    } else {
-        res.status(403).send("Acceso denegado: Inicia sesión primero");
-    }
-}
-
 // Login
 app.post('/api/login', async (req, res) => {
-    // Usamos 'username' del formulario para buscar en la columna 'nombre'
-    const { username, password } = req.body; 
-
+    const { username, password } = req.body;
     try {
-        // Buscamos en tu tabla 'usuario' (singular) usando la columna 'nombre'
         const query = 'SELECT * FROM usuario WHERE nombre = $1';
         const usuarioDB = await pool.query(query, [username]);
         
-        if (usuarioDB.rows.length === 0) {
-            return res.status(401).send("Usuario no encontrado");
-        }
+        if (usuarioDB.rows.length === 0) return res.status(401).send("Usuario no encontrado");
 
         const usuario = usuarioDB.rows[0];
-
-        /* IMPORTANTE: En tu imagen la clave es "mau" (texto plano).
-           Si aún no has usado bcrypt para registrar, usa esta comparación temporal:
-        */
         if (password === usuario.clave) {
+            // Guardamos ID y ROL en la sesión
             req.session.usuarioId = usuario.id;
-            return res.status(200).send("Bienvenido");
+            req.session.rol = usuario.rol; 
+            
+            return res.status(200).json({ rol: usuario.rol }); // Enviamos el rol al frontend
         } else {
             return res.status(401).send("Contraseña incorrecta");
         }
-
-        /* Cuando ya tengas claves encriptadas, activarás esto:
-           const esValida = await bcrypt.compare(password, usuario.clave);
-        */
-
     } catch (err) {
-        console.error("Error en login:", err.message);
         res.status(500).send("Error en el servidor");
     }
 });
@@ -84,7 +84,7 @@ app.post('/api/login', async (req, res) => {
 // ... (parte inicial del código igual)
 
 // 1. OBTENER EQUIPOS (Ajustado a tus imágenes image_7d5233 y image_7d5272)
-app.get('/api/equipos', async (req, res) => {
+app.get('/api/equipos',verificarSesion, async (req, res) => {
     try {
         const query = `
             SELECT 
@@ -118,7 +118,7 @@ app.get('/api/equipos', async (req, res) => {
 });
 
 // POST NUEVO EQUIPO
-app.post('/api/equipos', async (req, res) => {
+app.post('/api/equipos', verificarSesion, async (req, res) => {
     const { fmo, serial, tipo, clase, marca, modelo, departamento, responsable, estado, observaciones } = req.body;
 
     try {
@@ -161,7 +161,7 @@ app.post('/api/equipos', async (req, res) => {
 });
 
 // 2. OBTENER DEPARTAMENTOS 
-app.get('/api/departamentos', async (req, res) => {
+app.get('/api/departamentos',verificarSesion, async (req, res) => {
     try {
         // En tu imagen las columnas son: id, nombre, id_gerencia
         const query = 'SELECT id, nombre, id_gerencia FROM departamento ORDER BY nombre';
@@ -174,7 +174,7 @@ app.get('/api/departamentos', async (req, res) => {
 });
 
 // 2. GUARDAR NUEVO DEPARTAMENTO
-app.post('/api/departamentos', async (req, res) => {
+app.post('/api/departamentos',verificarSesion, async (req, res) => {
     try {
         const { nombre, centro_costo, id_gerencia } = req.body;
 
@@ -201,7 +201,7 @@ app.post('/api/departamentos', async (req, res) => {
 });
 
 // 3. OBTENER GERENCIAS (Ajustado a image_7d5272)
-app.get('/api/gerencias', async (req, res) => {
+app.get('/api/gerencias',verificarSesion, async (req, res) => {
     try {
         // En tu imagen las columnas son: id, nombre
         const resDB = await pool.query('SELECT id, nombre FROM gerencia ORDER BY nombre');
@@ -213,7 +213,7 @@ app.get('/api/gerencias', async (req, res) => {
 });
 
 // 3. GUARDAR NUEVA GERENCIA
-app.post('/api/gerencias', async (req, res) => {
+app.post('/api/gerencias',verificarSesion, async (req, res) => {
     try {
         const { nombre } = req.body;
 
@@ -240,7 +240,7 @@ app.post('/api/gerencias', async (req, res) => {
 });
 
 // 4. OBTENER RESPONSABLES
-app.get('/api/responsables', async (req, res) => {
+app.get('/api/responsables',verificarSesion, async (req, res) => {
     try {
         // En tu imagen no existe 'nombre_completo', usamos nombre y apellido
         const resDB = await pool.query('SELECT id, cedula, nombre, apellido FROM responsable ORDER BY nombre');
@@ -252,7 +252,7 @@ app.get('/api/responsables', async (req, res) => {
 });
 
 // 4. GUARDAR NUEVO RESPONSABLE
-app.post('/api/responsables', async (req, res) => {
+app.post('/api/responsables',verificarSesion, async (req, res) => {
     try {
         const { cedula, nombre, apellido, id_departamento } = req.body;
 
@@ -283,7 +283,7 @@ app.post('/api/responsables', async (req, res) => {
 
 
 // 5. OBTENER CLASES
-app.get('/api/clases', async (req, res) => {
+app.get('/api/clases',verificarSesion, async (req, res) => {
     try {
         const resultado = await pool.query('SELECT id, nombre FROM clase_equipo ORDER BY nombre');
         res.json(resultado.rows);
@@ -293,7 +293,7 @@ app.get('/api/clases', async (req, res) => {
 });
 
 // POST CLASES 
-app.post('/api/clases', async (req, res) => {
+app.post('/api/clases',verificarSesion, async (req, res) => {
     try {
         const { nombre } = req.body;
         // Inserta en la tabla correcta
@@ -308,7 +308,7 @@ app.post('/api/clases', async (req, res) => {
     }
 });
 
-app.get('/api/auditoria', async (req, res) => {
+app.get('/api/auditoria',verificarSesion, async (req, res) => {
     const { fecha_inicio, fecha_fin } = req.query;
 
     try {
@@ -337,7 +337,7 @@ app.get('/api/auditoria', async (req, res) => {
 
 // ELIMINAR usando ID
 // ELIMINAR usando ID corregido
-app.delete('/api/equipos/:id', async (req, res) => {
+app.delete('/api/equipos/:id',verificarSesion, async (req, res) => {
     // Limpiamos el ID directamente al recibirlo
     const id = req.params.id.toString().replace(/\D/g, ''); 
     
@@ -358,7 +358,7 @@ app.delete('/api/equipos/:id', async (req, res) => {
 });
 
 // OBTENER para editar usando ID
-app.get('/api/equipos/:id', async (req, res) => {
+app.get('/api/equipos/:id',verificarSesion, async (req, res) => {
     try {
         const resDB = await pool.query('SELECT * FROM equipo WHERE id = $1', [req.params.id]);
         res.json(resDB.rows[0]);
@@ -368,7 +368,7 @@ app.get('/api/equipos/:id', async (req, res) => {
 });
 
 
-app.put('/api/equipos/:id', async (req, res) => {
+app.put('/api/equipos/:id',verificarSesion, async (req, res) => {
     const { id } = req.params;
     const { serial, marca, estado, id_responsable, observaciones } = req.body;
 
@@ -385,6 +385,16 @@ app.put('/api/equipos/:id', async (req, res) => {
     }
 });
 
+
+app.post('/api/logout',verificarSesion, (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).send("No se pudo cerrar la sesión");
+        }
+        res.clearCookie('connect.sid'); // Limpia la cookie de sesión de Express
+        res.status(200).send("Sesión cerrada");
+    });
+});
 
 
 // Iniciar servidor en el puerto 3000
