@@ -574,6 +574,40 @@ function abrirInterfazRegistro(tipo) {
                     </select>
                 </div>`;
             break;
+        
+        case 'registrar_usuario':
+        titulo = "Registrar Nuevo Usuario";
+        icono = "fa-user-plus";
+        endpoint = "/api/registrar-usuario";
+        htmlFormulario = `
+        <div class="campo">
+            <label>Cédula</label>
+            <input type="text" name="cedula" placeholder="Ej: 12345678" required>
+        </div>
+        <div class="campo">
+            <label>Nombre de usuario (Login)</label>
+            <input type="text" name="username" placeholder="Ej: mau.arismendi" required>
+        </div>
+        <div class="campo">
+            <label>Nombre Real</label>
+            <input type="text" name="nombre_real" placeholder="Ej: Mauricio" required>
+        </div>
+        <div class="campo">
+            <label>Apellido</label>
+            <input type="text" name="apellido" placeholder="Ej: Arismendi" required>
+        </div>
+        <div class="campo">
+            <label>Contraseña</label>
+            <input type="password" name="password" required>
+        </div>
+        <div class="campo">
+            <label>Rol de Acceso</label>
+            <select name="rol" required>
+                <option value="usuario">Usuario Normal</option>
+                <option value="admin">Administrador</option>
+            </select>
+        </div>`;
+        break;
             
     }
     
@@ -1018,7 +1052,7 @@ function cargarInterfazConfig(contenedor) {
                 <div class="card-config">
                     <h4>Seguridad</h4>
                     <p>Gestión de usuarios y niveles de acceso.</p>
-                    <button class="btn-secundario">Administrar Usuarios</button>
+                    <button class="btn-secundario" onclick="abrirInterfazRegistro('registrar_usuario')"  >Administrar Usuarios</button>
                 </div>
             </div>
         </div>

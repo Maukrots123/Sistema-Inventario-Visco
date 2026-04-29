@@ -42,44 +42,77 @@ app.get('/', (req, res) => {
     res.redirect('/login.html');
 });
 
-app.post('/api/registrar-usuario',verificarSesion, esAdmin, async (req, res) => {
-    const { username, password } = req.body;
+app.post('/api/registrar-usuario', verificarSesion, esAdmin, async (req, res) => {
+    // Nota: Ahora recibimos 'username' del form, pero lo guardamos en 'usuario_nombre'
+    const { username, password, cedula, nombre_real, apellido, rol } = req.body;
+
     try {
-        // Encriptamos la contraseña con un factor de costo de 10
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
         
-        await pool.query('INSERT INTO usuarios (username, password) VALUES ($1, $2)', 
-            [username, hashedPassword]);
+        // Insertamos: 'nombre' es nombre real, 'usuario_nombre' es el login
+        const query = `
+            INSERT INTO usuario (cedula, nombre, apellido, usuario_nombre, clave, rol) 
+            VALUES ($1, $2, $3, $4, $5, $6) 
+            RETURNING id
+        `;
+        
+        const valores = [cedula, nombre_real, apellido, username, hashedPassword, rol || 'usuario'];
+
+        const resultado = await pool.query(query, valores);
             
-        res.status(201).send("Usuario registrado correctamente");
+        res.status(201).json({ mensaje: "Usuario registrado con éxito", id: resultado.rows[0].id });
     } catch (err) {
-        res.status(500).send("Error al registrar: " + err.message);
+        console.error("Error al registrar:", err.message);
+        res.status(500).send("Error interno: " + err.message);
     }
 });
 
-// Login
+// API DE LOGIN ACTUALIZADA Y SEGURA
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
+    console.log("Intentando loguear con usuario_nombre:", username); 
+
     try {
-        const query = 'SELECT * FROM usuario WHERE nombre = $1';
+        // 1. Buscamos específicamente en la columna 'usuario_nombre'
+        // que configuramos en el nuevo esquema de la base de datos
+        const query = 'SELECT * FROM usuario WHERE usuario_nombre = $1';
         const usuarioDB = await pool.query(query, [username]);
         
-        if (usuarioDB.rows.length === 0) return res.status(401).send("Usuario no encontrado");
+        if (usuarioDB.rows.length === 0) {
+            return res.status(401).send("Usuario o contraseña incorrectos");
+        }
 
         const usuario = usuarioDB.rows[0];
-        if (password === usuario.clave) {
-            // Guardamos ID y ROL en la sesión
+
+        // 2. Comparamos la contraseña en texto plano con el hash guardado en BD
+        const esValida = await bcrypt.compare(password, usuario.clave);
+
+        if (esValida) {
+            // 3. Crear la sesión con los datos correctos
             req.session.usuarioId = usuario.id;
             req.session.rol = usuario.rol; 
             
-            return res.status(200).json({ rol: usuario.rol }); // Enviamos el rol al frontend
+            return res.status(200).json({ 
+                mensaje: "Bienvenido",
+                rol: usuario.rol 
+            });
         } else {
-            return res.status(401).send("Contraseña incorrecta");
+            return res.status(401).send("Usuario o contraseña incorrectos");
         }
+
     } catch (err) {
-        res.status(500).send("Error en el servidor");
+        console.error("Error en login:", err.message);
+        res.status(500).send("Error interno del servidor");
     }
 });
+
+
+
+
+
+
+
 // RUTA PARA OBTENER LOS EQUIPOS DESDE POSTGRES
 // ... (parte inicial del código igual)
 
