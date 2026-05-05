@@ -608,6 +608,73 @@ function abrirInterfazRegistro(tipo) {
             </select>
         </div>`;
         break;
+
+        
+    case 'editar_equipo':
+    titulo = "Modificar Equipo de Inventario";
+    icono = "fa-pen-to-square";
+    endpoint = "/api/equipos";             // igual que el POST de equipos
+    htmlFormulario = `
+        <input type="hidden" name="id" value="">   <!-- para el ID del equipo a modificar -->
+
+        <div class="campo">
+            <label>Clase de Equipo</label>
+            <select name="clase" required>
+                <option value="Asignado">Asignado</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label>Tipo</label>
+            <input type="text" name="tipo" placeholder="Ej: Periférico" required>
+        </div>
+        <div class="campo">
+            <label>FMO (Número de Activo)</label>
+            <input type="text" name="fmo" placeholder="Ej: 123" required>
+        </div>
+        <div class="campo">
+            <label>Número de Serial</label>
+            <input type="text" name="serial" placeholder="Ej: 678" required>
+        </div>
+        <div class="campo">
+            <label>Modelo</label>
+            <input type="text" name="modelo" placeholder="Ej: Inspiron 3000">
+        </div>
+        <div class="campo">
+            <label>Marca</label>
+            <input type="text" name="marca" placeholder="Ej: Dell" required>
+        </div>
+        <div class="campo">
+            <label>Gerencia</label>
+            <select name="gerencia" required>
+                <option value="Asignado">Asignado</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label>Departamento (ID)</label>
+            <select name="departamento" required>
+                <option value="Asignado">Asignado</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label>Responsable (ID)</label>
+            <select name="responsable" required>
+                <option value="Asignado">Asignado</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label>Estado Actual</label>
+            <select name="estado" required>
+                <option value="Asignado">Asignado</option>
+                <option value="Almacén">En Almacén</option>
+                <option value="Reparación">En Reparación</option>
+                <option value="Desincorporado">Desincorporado</option>
+            </select>
+        </div>
+        <div class="campo" style="grid-column: span 2;">
+            <label>Observaciones</label>
+            <textarea name="observaciones" rows="3" placeholder="Detalles adicionales..."></textarea>
+        </div>`;
+    break;
             
     }
     
@@ -812,6 +879,7 @@ function actualizarCuerpoTabla(lista) {
             </tr>
         `;
     }).join('');
+
 }
 
 
