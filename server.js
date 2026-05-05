@@ -205,6 +205,77 @@ app.post('/api/equipos', verificarSesion, async (req, res) => {
     }
 });
 
+
+app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
+    const { id } = req.params;
+    // Extraemos los IDs que vienen del formulario (departamento y responsable ya son IDs)
+    const { fmo, serial, tipo, clase, marca, modelo, departamento, responsable, estado, observaciones } = req.body;
+
+    try {
+        // 1. MANEJO DINÁMICO DE LA CLASE (Tabla: clase_equipo)
+        let idClaseFinal = null;
+        if (clase && clase.trim() !== "") {
+            const buscarClase = await pool.query('SELECT id FROM clase_equipo WHERE LOWER(nombre) = LOWER($1)', [clase.trim()]);
+            
+            if (buscarClase.rows.length > 0) {
+                idClaseFinal = buscarClase.rows[0].id;
+            } else {
+                const nuevaClase = await pool.query('INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', [clase.trim()]);
+                idClaseFinal = nuevaClase.rows[0].id;
+            }
+        }
+
+        // 2. ACTUALIZACIÓN EN LA TABLA 'equipo'
+        // Usamos los nombres exactos de tus columnas según la imagen: fmo, serial, marca, estado, tipo, observacion, id_clase, id_departamento, id_responsable, modelo
+        const queryUpdate = `
+            UPDATE equipo 
+            SET 
+                fmo = $1, 
+                serial = $2, 
+                tipo = $3, 
+                id_clase = $4, 
+                marca = $5, 
+                modelo = $6, 
+                id_departamento = $7, 
+                id_responsable = $8, 
+                estado = $9, 
+                observacion = $10, 
+                fecha_modificacion = CURRENT_TIMESTAMP
+            WHERE id = $11
+            RETURNING *;
+        `;
+
+        const valores = [
+            fmo,            // $1
+            serial,         // $2
+            tipo,           // $3
+            idClaseFinal,   // $4
+            marca,          // $5
+            modelo,         // $6
+            departamento,   // $7 (id_departamento FK)
+            responsable,    // $8 (id_responsable FK)
+            estado,         // $9
+            observaciones,  // $10 (observacion)
+            id              // $11
+        ];
+
+        const resultado = await pool.query(queryUpdate, valores);
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({ error: 'El equipo no existe en la base de datos.' });
+        }
+
+        res.json({ 
+            mensaje: 'Equipo actualizado correctamente', 
+            data: resultado.rows[0] 
+        });
+
+    } catch (err) {
+        console.error("Error SQL en PUT /api/equipos:", err.message);
+        res.status(500).json({ error: 'Error interno al actualizar: ' + err.message });
+    }
+});
+
 // 2. OBTENER DEPARTAMENTOS 
 app.get('/api/departamentos',verificarSesion, async (req, res) => {
     try {

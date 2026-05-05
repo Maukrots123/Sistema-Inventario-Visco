@@ -241,6 +241,8 @@ body {
     gap: 30px;
 }
 
+btn-cancelar
+
 .seccion-form h3 {
     font-size: 1rem;
     color: var(--color-lateral);
@@ -599,7 +601,17 @@ textarea[name="observaciones"] {
     to { opacity: 1; transform: translateY(0); }
 }
 
+campo{
 
+}
+
+#formulario-modal { /* Ajusta al ID de tu contenedor */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    max-height: 450px;
+    overflow-y: auto;
+}
 
 /* Formulario Dinamico para Registrar una nueva gerencia, clase, y responsable */
 .modal-overlay-sistema {
@@ -666,8 +678,8 @@ textarea[name="observaciones"] {
 }
 
 .btn-cancelar:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
+    background: #ff4444;
+    border-color: #f74141;
 }
 
 /* Botón Guardar */

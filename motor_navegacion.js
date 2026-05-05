@@ -610,73 +610,101 @@ function abrirInterfazRegistro(tipo) {
         break;
 
         
-    case 'editar_equipo':
+case 'editar_equipo':
     titulo = "Modificar Equipo de Inventario";
     icono = "fa-pen-to-square";
-    endpoint = "/api/equipos";             // igual que el POST de equipos
-    htmlFormulario = `
-        <input type="hidden" name="id" value="">   <!-- para el ID del equipo a modificar -->
+    endpoint = `/api/equipos/${equipo.id}`;
 
-        <div class="campo">
-            <label>Clase de Equipo</label>
-            <select name="clase" required>
-                <option value="Asignado">Asignado</option>
-            </select>
-        </div>
-        <div class="campo">
-            <label>Tipo</label>
-            <input type="text" name="tipo" placeholder="Ej: Periférico" required>
-        </div>
-        <div class="campo">
-            <label>FMO (Número de Activo)</label>
-            <input type="text" name="fmo" placeholder="Ej: 123" required>
-        </div>
-        <div class="campo">
-            <label>Número de Serial</label>
-            <input type="text" name="serial" placeholder="Ej: 678" required>
-        </div>
-        <div class="campo">
-            <label>Modelo</label>
-            <input type="text" name="modelo" placeholder="Ej: Inspiron 3000">
-        </div>
-        <div class="campo">
-            <label>Marca</label>
-            <input type="text" name="marca" placeholder="Ej: Dell" required>
-        </div>
-        <div class="campo">
-            <label>Gerencia</label>
-            <select name="gerencia" required>
-                <option value="Asignado">Asignado</option>
-            </select>
-        </div>
-        <div class="campo">
-            <label>Departamento (ID)</label>
-            <select name="departamento" required>
-                <option value="Asignado">Asignado</option>
-            </select>
-        </div>
-        <div class="campo">
-            <label>Responsable (ID)</label>
-            <select name="responsable" required>
-                <option value="Asignado">Asignado</option>
-            </select>
-        </div>
-        <div class="campo">
-            <label>Estado Actual</label>
-            <select name="estado" required>
-                <option value="Asignado">Asignado</option>
-                <option value="Almacén">En Almacén</option>
-                <option value="Reparación">En Reparación</option>
-                <option value="Desincorporado">Desincorporado</option>
-            </select>
-        </div>
-        <div class="campo" style="grid-column: span 2;">
-            <label>Observaciones</label>
-            <textarea name="observaciones" rows="3" placeholder="Detalles adicionales..."></textarea>
+    const equipo = accion === 'editar_equipo' 
+        ? datosEquipos.find(e => e.id == equipoId) 
+        : {};
+
+    // Función auxiliar para generar las opciones y marcar la seleccionada
+    const generarOpciones = (lista, seleccionadoId, nombrePropiedad = 'nombre') => {
+        return lista.map(item => `
+            <option value="${item.id}" ${item.id == seleccionadoId ? 'selected' : ''}>
+                ${item[nombrePropiedad]}
+            </option>
+        `).join('');
+    };
+
+    htmlFormulario = `
+        <input type="hidden" name="id" value="${equipo.id}">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+            
+            <div class="campo">
+                <label>Clase de Equipo</label>
+                <select name="clase" required>
+                    <!-- Si 'clase' en tu DB es texto, comparamos por nombre, si es ID, por ID -->
+                    ${generarOpciones(listas.clases, equipo.id_clase)}
+                </select>
+            </div>
+            <div class="campo">
+                <label>Tipo</label>
+                <input type="text" name="tipo" value="${equipo.tipo || ''}" placeholder="Ej: Periférico" required>
+            </div>
+            <div class="campo">
+                <label>FMO (Activo)</label>
+                <input type="text" name="fmo" value="${equipo.fmo || ''}" placeholder="Ej: 123" required>
+            </div>
+            <div class="campo">
+                <label>Número de Serial</label>
+                <input type="text" name="serial" value="${equipo.serial || ''}" placeholder="Ej: 678" required>
+            </div>
+            <div class="campo">
+                <label>Modelo</label>
+                <input type="text" name="modelo" value="${equipo.modelo || ''}" placeholder="Ej: Inspiron 3000">
+            </div>
+            <div class="campo">
+                <label>Marca</label>
+                <input type="text" name="marca" value="${equipo.marca || ''}" placeholder="Ej: Dell" required>
+            </div>
+
+            <div class="campo">
+                <label>Gerencia</label>
+                <select name="gerencia" id="select-gerencia" required>
+                    <option value="">Seleccione Gerencia...</option>
+                    ${generarOpciones(listas.gerencias, equipo.id_gerencia)}
+                </select>
+            </div>
+
+            <div class="campo">
+                <label>Departamento</label>
+                <select name="departamento" id="select-departamento" required>
+                    <option value="">Seleccione Departamento...</option>
+                    ${generarOpciones(listas.departamentos, equipo.id_departamento)}
+                </select>
+            </div>
+
+            <div class="campo">
+                <label>Responsable</label>
+                <select name="responsable" required>
+                    <option value="">Seleccione Responsable...</option>
+                    ${generarOpciones(listas.responsables, equipo.id_responsable, 'nombre_completo')}
+                </select>
+            </div>
+
+            <div class="campo">
+                <label>Estado Actual</label>
+                <select name="estado" required>
+                    <option value="Asignado" ${equipo.estado === 'Asignado' ? 'selected' : ''}>Asignado</option>
+                    <option value="Almacén" ${equipo.estado === 'Almacén' ? 'selected' : ''}>En Almacén</option>
+                    <option value="Reparación" ${equipo.estado === 'Reparación' ? 'selected' : ''}>En Reparación</option>
+                    <option value="Desincorporado" ${equipo.estado === 'Desincorporado' ? 'selected' : ''}>Desincorporado</option>
+                </select>
+            </div>
+
+            <div class="campo" style="grid-column: span 2;">
+                <label>Observaciones</label>
+                <textarea name="observaciones" rows="2" placeholder="Detalles adicionales..." style="width: 100%; resize: vertical;">${equipo.observaciones || equipo.observacion || ''}</textarea>
+            </div>
         </div>`;
     break;
             
     }
+
+    
     
 
     // Crear el elemento del modal (PANTALLA FLOTANTE)
@@ -880,6 +908,7 @@ function actualizarCuerpoTabla(lista) {
         `;
     }).join('');
 
+    
 }
 
 
