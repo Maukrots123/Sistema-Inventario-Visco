@@ -377,13 +377,14 @@ function generarColores(cantidad) {
 }
 
 /**
- * Genera el formulario de registro con diseño de cuadrícula
+ * Genera el formulario de registro con diseño de cuadrícula equilibrado
  */
 function cargarFormularioRegistro(contenedor) {
     contenedor.innerHTML = `
         <div class="animacion-seccion contenedor-formulario">
             <form id="form-registro-equipo" class="grid-formulario">
                 
+                <!-- SECCIÓN 1: Identificación (Ahora más limpia con 3 campos) -->
                 <div class="seccion-form">
                     <h3><i class="fa-solid fa-tag"></i> Identificación del Equipo</h3>
                     <div class="campos-grupo">
@@ -402,22 +403,28 @@ function cargarFormularioRegistro(contenedor) {
                     </div>
                 </div>
 
+                <!-- SECCIÓN 2: Clasificación (Ahora con Modelo para equilibrar) -->
                 <div class="seccion-form">
-                <h3><i class="fa-solid fa-layer-group"></i> Clasificación</h3>
-                        <div class="campos-grupo">
-                            <div class="campo">
-                                <label>Clase</label>
-                                <select name="clase" id="reg-clase" required>
-                                    <option value="">Seleccione Clase</option>
-                                    </select>
-                            </div>
-                            <div class="campo">
-                                <label>Tipo</label>
-                                <input type="text" name="tipo" placeholder="Ej: Laptop">
-                            </div>
+                    <h3><i class="fa-solid fa-layer-group"></i> Clasificación</h3>
+                    <div class="campos-grupo">
+                        <div class="campo">
+                            <label>Clase</label>
+                            <select name="clase" id="reg-clase" required>
+                                <option value="">Seleccione Clase</option>
+                            </select>
+                        </div>
+                        <div class="campo">
+                            <label>Tipo</label>
+                            <input type="text" name="tipo" placeholder="Ej: Laptop">
+                        </div>
+                        <div class="campo">
+                            <label>Modelo</label>
+                            <input type="text" name="modelo" placeholder="Ej: Latitude 5420" required>
                         </div>
                     </div>
+                </div>
 
+                <!-- SECCIÓN 3: Ubicación y Asignación -->
                 <div class="seccion-form">
                     <h3><i class="fa-solid fa-location-dot"></i> Ubicación y Asignación</h3>
                     <div class="campos-grupo">
@@ -433,7 +440,6 @@ function cargarFormularioRegistro(contenedor) {
                                 <option value="">Seleccione Departamento</option>
                             </select>
                         </div>
-
                         <div class="campo">
                             <label>Asignado a:</label>
                             <select name="responsable" id="reg-responsable">
@@ -443,6 +449,7 @@ function cargarFormularioRegistro(contenedor) {
                     </div>
                 </div>
 
+                <!-- SECCIÓN 4: Contabilidad y Estado -->
                 <div class="seccion-form">
                     <h3><i class="fa-solid fa-file-invoice-dollar"></i> Contabilidad y Estado</h3>
                     <div class="campos-grupo">
@@ -450,7 +457,6 @@ function cargarFormularioRegistro(contenedor) {
                             <label>Centro de Costo (CECO)</label>
                             <input type="text" name="centro_costo" placeholder="Código CECO">
                         </div>
-                        
                         <div class="campo">
                             <label>Estado Actual</label>
                             <select name="estado">
@@ -458,7 +464,7 @@ function cargarFormularioRegistro(contenedor) {
                                 <option value="Almacen">Almacen</option>
                                 <option value="Dañado">Dañado</option>
                                 <option value="Revision">Revision</option>                            
-                                </select>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -772,38 +778,56 @@ async function abrirInterfazRegistro(tipo, data = null) {
     document.body.appendChild(overlay);
 
     
+// Lógica de envío dinámica (Detecta si es creación o edición)
+document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    // Extraemos los datos del formulario (incluyendo el nuevo campo Modelo)
+    const datos = Object.fromEntries(new FormData(e.target));
 
-    // Lógica de envío
-    // Lógica de envío dinámica (Detecta si es creación o edición)
-    document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
-        e.preventDefault();
-        const datos = Object.fromEntries(new FormData(e.target));
+    // Determinamos el método: PUT si hay un ID al final del endpoint, POST si no.
+    const partesEndpoint = endpoint.split('/');
+    const ultimoSegmento = partesEndpoint.pop() || partesEndpoint.pop(); 
+    const metodoSugerido = (!isNaN(ultimoSegmento)) ? 'PUT' : 'POST';
 
-        // Si el endpoint contiene un ID (ej: /api/equipos/17), usamos PUT. 
-        // Si termina en el nombre del recurso (ej: /api/equipos), usamos POST.
-        const metodoSugerido = (endpoint.split('/').pop() && !isNaN(endpoint.split('/').pop())) ? 'PUT' : 'POST';
+    try {
+        const respuesta = await fetch(endpoint, {
+            method: metodoSugerido,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
 
-        try {
-            const respuesta = await fetch(endpoint, {
-                method: metodoSugerido,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(datos)
-            });
-
-            if (respuesta.ok) {
-                alert("Operación realizada con éxito");
-                overlay.remove(); // Cerramos el modal
-                // Aquí podrías agregar una función para refrescar tu tabla automáticamente
-                if (typeof cargarEquipos === 'function') cargarEquipos(); 
-            } else {
-                const errorData = await respuesta.json();
-                alert("Error: " + (errorData.message || "No se pudo guardar en el servidor"));
+        if (respuesta.ok) {
+            alert("Operación realizada con éxito");
+            
+            // 1. Cerramos el modal/overlay
+            if (typeof overlay !== 'undefined' && overlay) {
+                overlay.remove();
             }
-        } catch (error) {
-            console.error("Error en la petición:", error);
-            alert("Error de conexión con el servidor");
+
+            // 2. REFRESCO DE LA TABLA
+            // Buscamos el contenedor principal donde se renderiza el inventario
+            const contenedorApp = document.getElementById('contenedor-dinamico') || 
+                     document.getElementById('contenedor-principal') || 
+                     document.querySelector('.main-content');
+
+            if (contenedorApp && typeof cargarInventario === 'function') {
+                // Ejecutamos la carga de la tabla para ver los cambios (incluido el Modelo)
+                await cargarInventario(contenedorApp); 
+            } else {
+                // Si el sistema no encuentra dónde refrescar, recarga la página por seguridad
+                window.location.reload();
+            }
+
+        } else {
+            const errorData = await respuesta.json();
+            alert("Error: " + (errorData.message || "No se pudo guardar en el servidor"));
         }
-    };
+    } catch (error) {
+        console.error("Error en la petición:", error);
+        alert("Error de conexión con el servidor");
+    }
+};
 
     // Lógica de carga para Responsable y Departamento
 if (tipo === 'responsable' || tipo === 'departamento') {
