@@ -141,7 +141,6 @@ app.get('/api/equipos',verificarSesion, async (req, res) => {
                 e.estado, 
                 e.tipo, 
                 e.observacion AS observaciones, 
-                d.centro_costo,
                 e.fecha_modificacion,
                 c.nombre AS clase, 
                 d.nombre AS departamento,
@@ -208,25 +207,38 @@ app.post('/api/equipos', verificarSesion, async (req, res) => {
 
 app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
     const { id } = req.params;
-    // Extraemos los IDs que vienen del formulario (departamento y responsable ya son IDs)
     const { fmo, serial, tipo, clase, marca, modelo, departamento, responsable, estado, observaciones } = req.body;
 
     try {
-        // 1. MANEJO DINÁMICO DE LA CLASE (Tabla: clase_equipo)
+        // 1. MANEJO POLIMÓRFICO DE LA CLASE
         let idClaseFinal = null;
-        if (clase && clase.trim() !== "") {
-            const buscarClase = await pool.query('SELECT id FROM clase_equipo WHERE LOWER(nombre) = LOWER($1)', [clase.trim()]);
-            
-            if (buscarClase.rows.length > 0) {
-                idClaseFinal = buscarClase.rows[0].id;
-            } else {
-                const nuevaClase = await pool.query('INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', [clase.trim()]);
-                idClaseFinal = nuevaClase.rows[0].id;
+
+        if (clase !== undefined && clase !== null) {
+            // Verificamos si 'clase' ya es un ID numérico (enviado por el select del modal)
+            if (!isNaN(clase) && Number.isInteger(Number(clase))) {
+                idClaseFinal = parseInt(clase);
+            } 
+            // Si es un texto (enviado manualmente o por procesos de creación rápida)
+            else if (typeof clase === 'string' && clase.trim() !== "") {
+                const nombreLimpio = clase.trim();
+                const buscarClase = await pool.query(
+                    'SELECT id FROM clase_equipo WHERE LOWER(nombre) = LOWER($1)', 
+                    [nombreLimpio]
+                );
+                
+                if (buscarClase.rows.length > 0) {
+                    idClaseFinal = buscarClase.rows[0].id;
+                } else {
+                    const nuevaClase = await pool.query(
+                        'INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', 
+                        [nombreLimpio]
+                    );
+                    idClaseFinal = nuevaClase.rows[0].id;
+                }
             }
         }
 
         // 2. ACTUALIZACIÓN EN LA TABLA 'equipo'
-        // Usamos los nombres exactos de tus columnas según la imagen: fmo, serial, marca, estado, tipo, observacion, id_clase, id_departamento, id_responsable, modelo
         const queryUpdate = `
             UPDATE equipo 
             SET 
@@ -249,20 +261,20 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
             fmo,            // $1
             serial,         // $2
             tipo,           // $3
-            idClaseFinal,   // $4
+            idClaseFinal,   // $4 (Ya sea el ID detectado o el nuevo creado)
             marca,          // $5
             modelo,         // $6
-            departamento,   // $7 (id_departamento FK)
-            responsable,    // $8 (id_responsable FK)
+            departamento,   // $7 (FK)
+            responsable,    // $8 (FK)
             estado,         // $9
-            observaciones,  // $10 (observacion)
+            observaciones,  // $10
             id              // $11
         ];
 
         const resultado = await pool.query(queryUpdate, valores);
 
         if (resultado.rows.length === 0) {
-            return res.status(404).json({ error: 'El equipo no existe en la base de datos.' });
+            return res.status(404).json({ error: 'El equipo no existe.' });
         }
 
         res.json({ 
@@ -272,7 +284,7 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
 
     } catch (err) {
         console.error("Error SQL en PUT /api/equipos:", err.message);
-        res.status(500).json({ error: 'Error interno al actualizar: ' + err.message });
+        res.status(500).json({ error: 'Error interno: ' + err.message });
     }
 });
 

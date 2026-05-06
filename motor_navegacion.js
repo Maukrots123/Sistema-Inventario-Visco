@@ -633,112 +633,114 @@ async function abrirInterfazRegistro(tipo, data = null) {
         </div>`;
         break;
 
-  case 'editar_equipo':
-    // 1. Cargamos los catálogos. Se guardan en la constante 'catalogos'
-    const catalogos = await inicializarCatalogos();
-    
-    if (!catalogos) {
-        alert("Error al cargar los catálogos de la base de datos.");
-        return;
-    }
-
-    titulo = "Modificar Equipo de Inventario";
-    icono = "fa-pen-to-square";
-    endpoint = `/api/equipos/${equipo.id}`;
-
-    // 2. Helper de comparación por texto (mantiene el ID como value)
-    const generarHTMLOpciones = (lista, valorActual, esResponsable = false) => {
-        return lista.map(item => {
-            const nombreCatalogo = esResponsable 
-                ? `${item.nombre} ${item.apellido}`.trim() 
-                : item.nombre;
-
-            // Comparamos contra el texto que ya trae tu equipo (clase, departamento, etc.)
-            const isSelected = String(nombreCatalogo).toLowerCase() === String(valorActual).toLowerCase() 
-                ? 'selected' 
-                : '';
-
-            return `<option value="${item.id}" ${isSelected}>${nombreCatalogo}</option>`;
-        }).join('');
-    };
-
-    htmlFormulario = `
-        <input type="hidden" name="id" value="${equipo.id}">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+        case 'editar_equipo':
+            // 1. Cargamos los catálogos. Se guardan en la constante 'catalogos'
+            const catalogos = await inicializarCatalogos();
             
-            <div class="campo">
-                <label>Clase de Equipo</label>
-                <select name="clase" required>
-                    <option value="">Seleccione Clase...</option>
-                    ${generarHTMLOpciones(catalogos.clases, equipo.clase)}
-                </select>
-            </div>
+            if (!catalogos) {
+                alert("Error al cargar los catálogos de la base de datos.");
+                return;
+            }
 
-            <div class="campo">
-                <label>Tipo</label>
-                <input type="text" name="tipo" value="${equipo.tipo || ''}" required>
-            </div>
+            titulo = "Modificar Equipo de Inventario";
+            icono = "fa-pen-to-square";
+            // Forzamos a que el ID sea solo la parte numérica antes del primer símbolo extraño
+            const idLimpio = String(equipo.id).split(':')[0].trim();
+            endpoint = `/api/equipos/${idLimpio}`;
 
-            <div class="campo">
-                <label>FMO (Activo)</label>
-                <input type="text" name="fmo" value="${equipo.fmo || ''}" required>
-            </div>
+            // 2. Helper de comparación por texto (mantiene el ID como value)
+            const generarHTMLOpciones = (lista, valorActual, esResponsable = false) => {
+                return lista.map(item => {
+                    const nombreCatalogo = esResponsable 
+                        ? `${item.nombre} ${item.apellido}`.trim() 
+                        : item.nombre;
 
-            <div class="campo">
-                <label>Número de Serial</label>
-                <input type="text" name="serial" value="${equipo.serial || ''}" required>
-            </div>
+                    // Comparamos contra el texto que ya trae tu equipo (clase, departamento, etc.)
+                    const isSelected = String(nombreCatalogo).toLowerCase() === String(valorActual).toLowerCase() 
+                        ? 'selected' 
+                        : '';
 
-            <div class="campo">
-                <label>Modelo</label>
-                <input type="text" name="modelo" value="${equipo.modelo || ''}">
-            </div>
+                    return `<option value="${item.id}" ${isSelected}>${nombreCatalogo}</option>`;
+                }).join('');
+            };
 
-            <div class="campo">
-                <label>Marca</label>
-                <input type="text" name="marca" value="${equipo.marca || ''}" required>
-            </div>
+            htmlFormulario = `
+                <input type="hidden" name="id" value="${equipo.id}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+                    
+                    <div class="campo">
+                        <label>Clase de Equipo</label>
+                        <select name="clase" required>
+                            <option value="">Seleccione Clase...</option>
+                            ${generarHTMLOpciones(catalogos.clases, equipo.clase)}
+                        </select>
+                    </div>
 
-            <div class="campo">
-                <label>Gerencia</label>
-                <select name="gerencia" id="select-gerencia" required>
-                    <option value="">Seleccione Gerencia...</option>
-                    ${generarHTMLOpciones(catalogos.gerencias, equipo.gerencia)}
-                </select>
-            </div>
+                    <div class="campo">
+                        <label>Tipo</label>
+                        <input type="text" name="tipo" value="${equipo.tipo || ''}" required>
+                    </div>
 
-            <div class="campo">
-                <label>Departamento</label>
-                <select name="departamento" id="select-departamento" required>
-                    <option value="">Seleccione Departamento...</option>
-                    ${generarHTMLOpciones(catalogos.departamentos, equipo.departamento)}
-                </select>
-            </div>
+                    <div class="campo">
+                        <label>FMO (Activo)</label>
+                        <input type="text" name="fmo" value="${equipo.fmo || ''}" required>
+                    </div>
 
-            <div class="campo">
-                <label>Responsable</label>
-                <select name="responsable" required>
-                    <option value="">Seleccione Responsable...</option>
-                    ${generarHTMLOpciones(catalogos.responsables, equipo.asignado, true)}
-                </select>
-            </div>
+                    <div class="campo">
+                        <label>Número de Serial</label>
+                        <input type="text" name="serial" value="${equipo.serial || ''}" required>
+                    </div>
 
-            <div class="campo">
-                <label>Estado Actual</label>
-                <select name="estado" required>
-                    <option value="Asignado" ${equipo.estado === 'Asignado' ? 'selected' : ''}>Asignado</option>
-                    <option value="Almacén" ${equipo.estado === 'Almacén' ? 'selected' : ''}>En Almacén</option>
-                    <option value="Reparación" ${equipo.estado === 'Reparación' ? 'selected' : ''}>En Reparación</option>
-                    <option value="Desincorporado" ${equipo.estado === 'Desincorporado' ? 'selected' : ''}>Desincorporado</option>
-                </select>
-            </div>
+                    <div class="campo">
+                        <label>Modelo</label>
+                        <input type="text" name="modelo" value="${equipo.modelo || ''}">
+                    </div>
 
-            <div class="campo" style="grid-column: span 2;">
-                <label>Observaciones</label>
-                <textarea name="observaciones" rows="2">${equipo.observaciones || equipo.observacion || ''}</textarea>
-            </div>
-        </div>`;
-    break;
+                    <div class="campo">
+                        <label>Marca</label>
+                        <input type="text" name="marca" value="${equipo.marca || ''}" required>
+                    </div>
+
+                    <div class="campo">
+                        <label>Gerencia</label>
+                        <select name="gerencia" id="select-gerencia" required>
+                            <option value="">Seleccione Gerencia...</option>
+                            ${generarHTMLOpciones(catalogos.gerencias, equipo.gerencia)}
+                        </select>
+                    </div>
+
+                    <div class="campo">
+                        <label>Departamento</label>
+                        <select name="departamento" id="select-departamento" required>
+                            <option value="">Seleccione Departamento...</option>
+                            ${generarHTMLOpciones(catalogos.departamentos, equipo.departamento)}
+                        </select>
+                    </div>
+
+                    <div class="campo">
+                        <label>Responsable</label>
+                        <select name="responsable" required>
+                            <option value="">Seleccione Responsable...</option>
+                            ${generarHTMLOpciones(catalogos.responsables, equipo.asignado, true)}
+                        </select>
+                    </div>
+
+                    <div class="campo">
+                        <label>Estado Actual</label>
+                        <select name="estado" required>
+                            <option value="Asignado" ${equipo.estado === 'Asignado' ? 'selected' : ''}>Asignado</option>
+                            <option value="Almacén" ${equipo.estado === 'Almacén' ? 'selected' : ''}>En Almacén</option>
+                            <option value="Reparación" ${equipo.estado === 'Reparación' ? 'selected' : ''}>En Reparación</option>
+                            <option value="Desincorporado" ${equipo.estado === 'Desincorporado' ? 'selected' : ''}>Desincorporado</option>
+                        </select>
+                    </div>
+
+                    <div class="campo" style="grid-column: span 2;">
+                        <label>Observaciones</label>
+                        <textarea name="observaciones" rows="2">${equipo.observaciones || equipo.observacion || ''}</textarea>
+                    </div>
+                </div>`;
+            break;
             
     }
 
@@ -772,25 +774,34 @@ async function abrirInterfazRegistro(tipo, data = null) {
     
 
     // Lógica de envío
+    // Lógica de envío dinámica (Detecta si es creación o edición)
     document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
         e.preventDefault();
         const datos = Object.fromEntries(new FormData(e.target));
 
+        // Si el endpoint contiene un ID (ej: /api/equipos/17), usamos PUT. 
+        // Si termina en el nombre del recurso (ej: /api/equipos), usamos POST.
+        const metodoSugerido = (endpoint.split('/').pop() && !isNaN(endpoint.split('/').pop())) ? 'PUT' : 'POST';
+
         try {
             const respuesta = await fetch(endpoint, {
-                method: 'POST',
+                method: metodoSugerido,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(datos)
             });
 
             if (respuesta.ok) {
-                alert("Registro exitoso en " + endpoint);
+                alert("Operación realizada con éxito");
                 overlay.remove(); // Cerramos el modal
+                // Aquí podrías agregar una función para refrescar tu tabla automáticamente
+                if (typeof cargarEquipos === 'function') cargarEquipos(); 
             } else {
-                alert("Error al guardar en el servidor");
+                const errorData = await respuesta.json();
+                alert("Error: " + (errorData.message || "No se pudo guardar en el servidor"));
             }
         } catch (error) {
-            console.error("Error:", error);
+            console.error("Error en la petición:", error);
+            alert("Error de conexión con el servidor");
         }
     };
 
@@ -854,8 +865,8 @@ async function cargarInventario(contenedor) {
                         <thead>
                             <tr>
                                 <th>Clase</th> <th>Tipo</th> <th>FMO</th> <th>Serial</th>
-                                <th>Marca</th> <th>Estado</th> <th>Asignado</th>
-                                <th>Gerencia</th> <th>Departamento</th> <th>C. Costo</th>
+                                <th>Marca</th> <th>Modelo</th> <th>Estado</th> 
+                                <th>Asignado</th> <th>Gerencia</th> <th>Departamento</th>
                                 <th>Observaciones</th> <th>Fecha Modif.</th>
                                 <th>Usuario Modif.</th> <th>Acciones</th>
                             </tr>
@@ -916,11 +927,11 @@ function actualizarCuerpoTabla(lista) {
                 <td>${equipo.fmo || '-'}</td>
                 <td>${equipo.serial || '-'}</td>
                 <td>${equipo.marca || '-'}</td>
+                <td>${equipo.modelo || '-'}</td>
                 <td><span class="etiqueta-estado ${estadoClase}">${equipo.estado || 'N/A'}</span></td>
                 <td>${equipo.asignado || 'Sin Asignar'}</td>
                 <td>${equipo.gerencia || '-'}</td>
                 <td>${equipo.departamento || '-'}</td>
-                <td>${equipo.centro_costo || '-'}</td>
                 <td title="${equipo.observaciones || ''}">
                     <div style="max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${equipo.observaciones || '-'}
