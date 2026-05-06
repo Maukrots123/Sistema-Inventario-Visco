@@ -601,9 +601,6 @@ textarea[name="observaciones"] {
     to { opacity: 1; transform: translateY(0); }
 }
 
-campo{
-
-}
 
 #formulario-modal { /* Ajusta al ID de tu contenedor */
     display: grid;
