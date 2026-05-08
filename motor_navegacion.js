@@ -766,7 +766,7 @@ async function abrirInterfazRegistro(tipo, data = null) {
                     <div class="zona-drop" id="zona-arrastre">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
                         <p>Arrastra la imagen aquí o <span>haz clic para buscar</span></p>
-                        <input type="file" id="input-archivo" accept="image/*,application/pdf" style="display:none">
+                        <input type="file" id="input-archivo" accept="image/*,application/pdf" multiple style="display:none">
                     </div>
                     <div id="vista-previa" class="preview-img-contenedor"></div>
                 </div>
@@ -789,6 +789,68 @@ async function abrirInterfazRegistro(tipo, data = null) {
             }, 100);
             break;
             
+            case 'ver_equipo':
+            const idEquipoVer = data;
+            const equipoInfo = todosLosEquipos.find(e => e.id == idEquipoVer);
+            
+            titulo = "Galería de Documentación";
+            icono = "fa-folder-open";
+
+            // Iniciamos con un contenedor de carga
+            htmlFormulario = `
+                <div class="info-registro-mini">
+                    <p><strong>Equipo:</strong> ${equipoInfo ? equipoInfo.marca + ' ' + equipoInfo.modelo : 'N/A'}</p>
+                    <p><strong>Serial:</strong> ${equipoInfo ? equipoInfo.serial : 'N/A'}</p>
+                </div>
+                <div id="contenedor-galeria" class="galeria-documentos">
+                    <p class="cargando">Buscando archivos...</p>
+                </div>
+            `;
+
+            setTimeout(async () => {
+                const contenedorGaleria = document.getElementById('contenedor-galeria');
+                try {
+                    // Debes crear este endpoint en tu server.js si no lo tienes
+                    const respuesta = await fetch(`/api/equipos/${idEquipoVer}/imagenes`);
+                    const archivos = await respuesta.json();
+
+                    if (!archivos || archivos.length === 0) {
+                        contenedorGaleria.innerHTML = '<p class="vacio">No hay documentos registrados para este equipo.</p>';
+                        return;
+                    }
+
+                    contenedorGaleria.innerHTML = archivos.map(archivo => {
+                        const esPDF = archivo.ruta_archivo.toLowerCase().endsWith('.pdf');
+                        const rutaCompleta = archivo.ruta_archivo; // Ej: /imagenes/marca_serial_123.jpg
+
+                        return `
+                            <div class="archivo-item">
+                                <div class="archivo-preview">
+                                    ${esPDF 
+                                        ? `<i class="fa-solid fa-file-pdf icono-pdf-grande"></i>` 
+                                        : `<img src="${rutaCompleta}" class="img-galeria-miniatura" onclick="window.open('${rutaCompleta}', '_blank')">`
+                                    }
+                                </div>
+                                <div class="archivo-info">
+                                    <span>${archivo.tipo_documento || 'Documento'}</span>
+                                    <a href="${rutaCompleta}" target="_blank" class="btn-descargar">
+                                        <i class="fa-solid fa-eye"></i> Ver
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                } catch (error) {
+                    console.error("Error al cargar galería:", error);
+                    contenedorGaleria.innerHTML = '<p class="error">Error al conectar con el servidor.</p>';
+                }
+                
+                // Ocultar botón guardar ya que es solo vista
+                const btnGuardar = document.querySelector('.btn-guardar-maestro');
+                if (btnGuardar) btnGuardar.style.display = 'none';
+            }, 100);
+            break;
     }
 
     
@@ -898,39 +960,53 @@ if (tipo === 'responsable' || tipo === 'departamento') {
 
 async function manejarSubidaImagen(idEquipo, datosEquipo) {
     if (!idEquipo) {
-        alert("ID de equipo no definido. No se puede subir la imagen.");
-        console.error('manejarSubidaImagen: idEquipo inválido', { idEquipo, datosEquipo });
+        alert("ID de equipo no definido.");
         return;
     }
 
     const input = document.getElementById('input-archivo');
-    if (!input || !input.files[0]) return alert("Por favor, seleccione una imagen.");
+    // Verificamos que haya al menos un archivo
+    if (!input || input.files.length === 0) return alert("Por favor, seleccione al menos una imagen.");
 
-    const formData = new FormData();
-    
-    formData.append('orden_compra', datosEquipo?.orden_compra || 'OC');
-    formData.append('tipo', datosEquipo?.tipo || 'Equipo');
-    formData.append('serial', datosEquipo?.serial || 'S-S');
-    formData.append('imagen', input.files[0]);
-    try {
-        const respuesta = await fetch(`/api/equipos/${idEquipo}/imagenes`, {
-            method: 'POST',
-            body: formData
-        });
+    // Variable para rastrear si todas las subidas fueron exitosas
+    let errores = 0;
 
-        if (respuesta.ok) {
-            alert("Imagen subida con éxito");
-            document.getElementById('modal-emergente').remove();
-            // Refrescamos la tabla
-            const contenedor = document.getElementById('contenedor-dinamico') || document.querySelector('.main-content');
-            if (typeof cargarInventario === 'function') await cargarInventario(contenedor);
-        } else {
-            alert("Error al subir la imagen al servidor");
+    // BUCLE PARA MÚLTIPLES ARCHIVOS
+    for (let i = 0; i < input.files.length; i++) {
+        const archivo = input.files[i];
+        const formData = new FormData();
+        
+        // IMPORTANTE: Añadimos la marca que faltaba
+        formData.append('orden_compra', datosEquipo?.orden_compra || 'OC');
+        formData.append('marca', datosEquipo?.marca || 'Marca'); // ESTA LÍNEA FALTABA
+        formData.append('serial', datosEquipo?.serial || 'S-S');
+        formData.append('imagen', archivo); 
+
+        try {
+            const respuesta = await fetch(`/api/equipos/${idEquipo}/imagenes`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!respuesta.ok) errores++;
+        } catch (error) {
+            console.error("Error en archivo:", archivo.name, error);
+            errores++;
         }
-    } catch (error) {
-        console.error("Error:", error);
-        alert("Error de conexión");
     }
+
+    if (errores === 0) {
+        alert("Todos los archivos se subieron con éxito");
+    } else {
+        alert(`Se completó la subida con ${errores} error(es)`);
+    }
+
+    // Limpieza de interfaz
+    const modal = document.getElementById('modal-emergente');
+    if (modal) modal.remove();
+    
+    const contenedor = document.getElementById('contenedor-dinamico') || document.querySelector('.main-content');
+    if (typeof cargarInventario === 'function') await cargarInventario(contenedor);
 }
 
 function activarLogicaArrastre() {

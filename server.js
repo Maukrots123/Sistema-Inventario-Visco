@@ -63,13 +63,17 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         // Extraemos los datos enviados desde el frontend en el body
-        const { orden_compra, tipo, serial } = req.body;
-        
-        // Limpiamos el nombre de caracteres especiales para evitar errores en el SO
-        const nombreLimpio = `${orden_compra}-${tipo}-${serial}`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const extension = path.extname(file.originalname);
-        
-        cb(null, `${nombreLimpio}${extension}`);
+        const { orden_compra, marca, serial } = req.body;
+
+    // Usamos el ID único para que archivos del mismo equipo no se sobrescriban
+    const idUnico = Math.floor(Math.random() * 1000);
+    
+    // Construcción del nombre: marca_serial_id (más limpio para el sistema)
+    const nombreBase = `${marca}_${serial}_${idUnico}`;
+    const nombreLimpio = nombreBase.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const extension = path.extname(file.originalname);
+    
+    cb(null, `${nombreLimpio}${extension}`);
     }
 });
 
