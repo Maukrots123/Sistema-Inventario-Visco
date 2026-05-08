@@ -925,3 +925,28 @@ canvas {
     font-weight: 500;
     margin-bottom: 1px;
 }
+
+
+
+
+.zona-drop {
+    border: 2px dashed #ccc;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+
+.zona-drop.zona-activa {
+    border-color: #007bff;
+    background: #e7f1ff;
+}
+
+.img-preview-fichas {
+    max-width: 100%;
+    margin-top: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}

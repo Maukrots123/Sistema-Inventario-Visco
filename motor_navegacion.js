@@ -747,6 +747,47 @@ async function abrirInterfazRegistro(tipo, data = null) {
                     </div>
                 </div>`;
             break;
+
+            case 'subir_archivo':
+            // 1. Capturamos el ID en una constante local para asegurar su disponibilidad
+            const idCapturado = data; 
+            const equipoImg = todosLosEquipos.find(e => e.id == idCapturado);
+            
+            titulo = "Documentación Fotográfica";
+            icono = "fa-images";
+            
+            htmlFormulario = `
+                <div class="info-registro-mini">
+                    <p><strong>Equipo:</strong> ${equipoImg ? equipoImg.marca + ' ' + equipoImg.modelo : 'N/A'}</p>
+                    <p><strong>Serial:</strong> ${equipoImg ? equipoImg.serial : 'N/A'}</p>
+                </div>
+                <div class="campo full-width">
+                    <label>Orden de Compra / Evidencia Física</label>
+                    <div class="zona-drop" id="zona-arrastre">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p>Arrastra la imagen aquí o <span>haz clic para buscar</span></p>
+                        <input type="file" id="input-archivo" accept="image/*,application/pdf" style="display:none">
+                    </div>
+                    <div id="vista-previa" class="preview-img-contenedor"></div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const btnGuardar = document.querySelector('.btn-guardar-maestro');
+                if (!btnGuardar) return;
+
+                const nuevoBtn = btnGuardar.cloneNode(true);
+                btnGuardar.parentNode.replaceChild(nuevoBtn, btnGuardar);
+                
+                nuevoBtn.onclick = (e) => {
+                    e.preventDefault();
+                    // 2. Usamos la constante capturada anteriormente
+                    manejarSubidaImagen(idCapturado, equipoImg);
+                };
+
+                activarLogicaArrastre(); 
+            }, 100);
+            break;
             
     }
 
@@ -781,6 +822,10 @@ async function abrirInterfazRegistro(tipo, data = null) {
 // Lógica de envío dinámica (Detecta si es creación o edición)
 document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
     e.preventDefault();
+
+    if (e.target.querySelector('input[type="file"]')) {
+        return; 
+    }
     
     // Extraemos los datos del formulario (incluyendo el nuevo campo Modelo)
     const datos = Object.fromEntries(new FormData(e.target));
@@ -849,6 +894,84 @@ if (tipo === 'responsable' || tipo === 'departamento') {
             });
     }
 }
+}
+
+async function manejarSubidaImagen(idEquipo, datosEquipo) {
+    if (!idEquipo) {
+        alert("ID de equipo no definido. No se puede subir la imagen.");
+        console.error('manejarSubidaImagen: idEquipo inválido', { idEquipo, datosEquipo });
+        return;
+    }
+
+    const input = document.getElementById('input-archivo');
+    if (!input || !input.files[0]) return alert("Por favor, seleccione una imagen.");
+
+    const formData = new FormData();
+    
+    formData.append('orden_compra', datosEquipo?.orden_compra || 'OC');
+    formData.append('tipo', datosEquipo?.tipo || 'Equipo');
+    formData.append('serial', datosEquipo?.serial || 'S-S');
+    formData.append('imagen', input.files[0]);
+    try {
+        const respuesta = await fetch(`/api/equipos/${idEquipo}/imagenes`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (respuesta.ok) {
+            alert("Imagen subida con éxito");
+            document.getElementById('modal-emergente').remove();
+            // Refrescamos la tabla
+            const contenedor = document.getElementById('contenedor-dinamico') || document.querySelector('.main-content');
+            if (typeof cargarInventario === 'function') await cargarInventario(contenedor);
+        } else {
+            alert("Error al subir la imagen al servidor");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Error de conexión");
+    }
+}
+
+function activarLogicaArrastre() {
+    const zona = document.getElementById('zona-arrastre');
+    const input = document.getElementById('input-archivo');
+    const vista = document.getElementById('vista-previa');
+
+    if(!zona) return;
+
+    zona.onclick = () => input.click();
+    zona.ondragover = (e) => { e.preventDefault(); zona.classList.add('zona-activa'); };
+    zona.ondragleave = () => zona.classList.remove('zona-activa');
+    zona.ondrop = (e) => {
+        e.preventDefault();
+        zona.classList.remove('zona-activa');
+        input.files = e.dataTransfer.files;
+        mostrarPreview(input.files[0], vista);
+    };
+    input.onchange = () => mostrarPreview(input.files[0], vista);
+}
+
+function mostrarPreview(archivo, contenedor) {
+    if (!archivo) return;
+
+    // Si es un PDF, mostramos un icono decorativo en lugar de intentar leer la imagen
+    if (archivo.type === "application/pdf") {
+        contenedor.innerHTML = `
+            <div class="pdf-preview-item">
+                <i class="fa-solid fa-file-pdf" style="font-size: 3rem; color: #e74c3c;"></i>
+                <p style="margin-top: 10px; font-size: 0.9rem;">${archivo.name}</p>
+            </div>
+        `;
+        return; // Salimos de la función
+    }
+
+    // Si es imagen, mantenemos tu lógica original con FileReader
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        contenedor.innerHTML = `<img src="${e.target.result}" class="img-preview-fichas">`;
+    };
+    reader.readAsDataURL(archivo);
 }
 
 
@@ -981,6 +1104,7 @@ function actualizarCuerpoTabla(lista) {
         `;
     }).join('');
 
+    
 
     
 }

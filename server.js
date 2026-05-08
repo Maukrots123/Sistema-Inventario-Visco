@@ -5,6 +5,9 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 
+const multer = require('multer');
+const fs = require('fs');
+
 // En la configuración inicial de tu session middleware
 app.use(session({
     secret: 'clave_secreta_de_visco_2026',
@@ -43,6 +46,35 @@ function esAdmin(req, res, next) {
         res.status(403).send("Acceso denegado: Esta acción requiere permisos de administrador.");
     }
 }
+
+
+
+
+// 1. Configuración del Almacenamiento
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const rutaBase = path.join(__dirname, 'public/imagenes');
+        
+        // Creamos la carpeta si no existe (Recursivo)
+        if (!fs.existsSync(rutaBase)) {
+            fs.mkdirSync(rutaBase, { recursive: true });
+        }
+        cb(null, rutaBase);
+    },
+    filename: function (req, file, cb) {
+        // Extraemos los datos enviados desde el frontend en el body
+        const { orden_compra, tipo, serial } = req.body;
+        
+        // Limpiamos el nombre de caracteres especiales para evitar errores en el SO
+        const nombreLimpio = `${orden_compra}-${tipo}-${serial}`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const extension = path.extname(file.originalname);
+        
+        cb(null, `${nombreLimpio}${extension}`);
+    }
+});
+
+const upload = multer({ storage: storage });
+
 
 // Endpoint para que el frontend verifique si hay sesión al cargar la página
 app.get('/api/verificar-sesion', (req, res) => {
@@ -512,6 +544,42 @@ app.put('/api/equipos/:id',verificarSesion, async (req, res) => {
         res.status(500).json({ error: "Error al actualizar: " + err.message });
     }
 });
+
+
+
+// 2. Ruta API para subir la imagen
+// 2. Ruta API para subir la imagen (CORREGIDA)
+app.post('/api/equipos/:id/imagenes', upload.single('imagen'), async (req, res) => {
+    const id_equipo = req.params.id;
+    const file = req.file;
+
+    if (!file) {
+        return res.status(400).json({ message: "No se seleccionó ninguna imagen" });
+    }
+
+    const rutaParaDB = `/imagenes/${file.filename}`;
+
+    try {
+        const query = `
+            INSERT INTO imagen_equipo (id_equipo, ruta_archivo, tipo_documento)
+            VALUES ($1, $2, $3)
+            RETURNING *;
+        `;
+        const valores = [id_equipo, rutaParaDB, 'Orden de Compra'];
+        
+        // CORRECCIÓN: Se cambió 'db.query' por 'pool.query'
+        const resultado = await pool.query(query, valores); 
+
+        res.json({
+            message: "Imagen guardada y registrada con éxito",
+            datos: resultado.rows[0]
+        });
+    } catch (error) {
+        console.error("Error al registrar en BD:", error.message);
+        res.status(500).json({ message: "Error al registrar en la base de datos" });
+    }
+});
+
 
 
 app.post('/api/logout', (req, res) => {
