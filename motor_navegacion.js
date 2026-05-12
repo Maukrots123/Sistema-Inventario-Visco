@@ -790,67 +790,61 @@ async function abrirInterfazRegistro(tipo, data = null) {
             break;
             
             case 'ver_equipo':
-            const idEquipoVer = data;
-            const equipoInfo = todosLosEquipos.find(e => e.id == idEquipoVer);
-            
-            titulo = "Galería de Documentación";
-            icono = "fa-folder-open";
+    const idVer = data;
+    const e = todosLosEquipos.find(item => item.id == idVer);
+    
+    titulo = "Ficha Técnica del Activo";
+    icono = "fa-eye";
 
-            // Iniciamos con un contenedor de carga
-            htmlFormulario = `
-                <div class="info-registro-mini">
-                    <p><strong>Equipo:</strong> ${equipoInfo ? equipoInfo.marca + ' ' + equipoInfo.modelo : 'N/A'}</p>
-                    <p><strong>Serial:</strong> ${equipoInfo ? equipoInfo.serial : 'N/A'}</p>
+    if (!e) {
+        htmlFormulario = `<p class="error">Error: Equipo no encontrado.</p>`;
+        break;
+    }
+
+    htmlFormulario = `
+        <div class="visualizacion-equipo">
+            <div class="panel-datos">
+                <div class="grupo-info">
+                    <label><i class="fa-solid fa-microchip"></i> Hardware</label>
+                    <p><strong>Clase:</strong> ${e.clase || 'N/A'}</p>
+                    <p><strong>Marca/Modelo:</strong> ${e.marca} ${e.modelo || ''}</p>
+                    <p><strong>Serial:</strong> <span class="badge-serial">${e.serial}</span></p>
+                    <p><strong>FMO:</strong> ${e.fmo || 'Sin asignar'}</p>
                 </div>
-                <div id="contenedor-galeria" class="galeria-documentos">
-                    <p class="cargando">Buscando archivos...</p>
-                </div>
-            `;
-
-            setTimeout(async () => {
-                const contenedorGaleria = document.getElementById('contenedor-galeria');
-                try {
-                    // Debes crear este endpoint en tu server.js si no lo tienes
-                    const respuesta = await fetch(`/api/equipos/${idEquipoVer}/imagenes`);
-                    const archivos = await respuesta.json();
-
-                    if (!archivos || archivos.length === 0) {
-                        contenedorGaleria.innerHTML = '<p class="vacio">No hay documentos registrados para este equipo.</p>';
-                        return;
-                    }
-
-                    contenedorGaleria.innerHTML = archivos.map(archivo => {
-                        const esPDF = archivo.ruta_archivo.toLowerCase().endsWith('.pdf');
-                        const rutaCompleta = archivo.ruta_archivo; // Ej: /imagenes/marca_serial_123.jpg
-
-                        return `
-                            <div class="archivo-item">
-                                <div class="archivo-preview">
-                                    ${esPDF 
-                                        ? `<i class="fa-solid fa-file-pdf icono-pdf-grande"></i>` 
-                                        : `<img src="${rutaCompleta}" class="img-galeria-miniatura" onclick="window.open('${rutaCompleta}', '_blank')">`
-                                    }
-                                </div>
-                                <div class="archivo-info">
-                                    <span>${archivo.tipo_documento || 'Documento'}</span>
-                                    <a href="${rutaCompleta}" target="_blank" class="btn-descargar">
-                                        <i class="fa-solid fa-eye"></i> Ver
-                                    </a>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-
-                } catch (error) {
-                    console.error("Error al cargar galería:", error);
-                    contenedorGaleria.innerHTML = '<p class="error">Error al conectar con el servidor.</p>';
-                }
                 
-                // Ocultar botón guardar ya que es solo vista
-                const btnGuardar = document.querySelector('.btn-guardar-maestro');
-                if (btnGuardar) btnGuardar.style.display = 'none';
-            }, 100);
-            break;
+                <div class="grupo-info">
+                    <label><i class="fa-solid fa-location-dot"></i> Ubicación y Control</label>
+                    <p><strong>Estado:</strong> <span class="status-${String(e.estado).toLowerCase()}">${e.estado}</span></p>
+                    <p><strong>Gerencia:</strong> ${e.gerencia || 'N/A'}</p>
+                    <p><strong>Departamento:</strong> ${e.departamento || 'N/A'}</p>
+                    <p><strong>Responsable:</strong> ${e.asignado || 'Sin responsable'}</p>
+                </div>
+
+                <div class="grupo-info full-width">
+                    <label><i class="fa-solid fa-comment"></i> Observaciones</label>
+                    <p class="txt-observacion">${e.observaciones || e.observacion || 'Sin notas adicionales.'}</p>
+                </div>
+            </div>
+
+            <div class="panel-archivos">
+                <label><i class="fa-solid fa-paperclip"></i> Documentos Adjuntos</label>
+                <div id="visor-archivos-equipo" class="mini-galeria-visor">
+                    <p class="cargando-mini">Cargando archivos...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    setTimeout(() => {
+    const btnGuardar = document.querySelector('.btn-guardar-maestro');
+    const instruccion = document.querySelector('.instruccion');
+    
+    if (btnGuardar) btnGuardar.style.display = 'none'; // Ocultamos el botón de acción
+    if (instruccion) instruccion.innerText = "Detalles técnicos registrados en el sistema";
+
+    cargarAdjuntosVisor(idVer);
+}, 150);
+    break;
     }
 
     
@@ -868,7 +862,6 @@ async function abrirInterfazRegistro(tipo, data = null) {
                 <button type="button" class="btn-cerrar-top" onclick="this.closest('.modal-overlay-sistema').remove()">&times;</button>
             </div>
             <form id="form-maestro-dinamico" class="form-modal-body">
-                <p class="instruccion">Complete los campos según el esquema de la base de datos</p>
                 ${htmlFormulario}
                 <div class="modal-footer-sistema">
                     <button type="button" onclick="this.closest('.modal-overlay-sistema').remove()" class="btn-cancelar">Cerrar</button>
@@ -884,6 +877,15 @@ async function abrirInterfazRegistro(tipo, data = null) {
 // Lógica de envío dinámica (Detecta si es creación o edición)
 document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
     e.preventDefault();
+
+    const btnGuardar = e.target.querySelector('.btn-guardar-maestro');
+    if (btnGuardar && btnGuardar.style.display === 'none') {
+        return; 
+    }
+
+    if (e.target.querySelector('input[type="file"]')) {
+        return; 
+    }
 
     if (e.target.querySelector('input[type="file"]')) {
         return; 
@@ -956,6 +958,46 @@ if (tipo === 'responsable' || tipo === 'departamento') {
             });
     }
 }
+}
+async function cargarAdjuntosVisor(idEquipo) {
+    const contenedor = document.getElementById('visor-archivos-equipo');
+    if (!contenedor) return;
+
+    try {
+        const res = await fetch(`/api/equipos/${idEquipo}/imagenes`);
+        const archivos = await res.json();
+
+        if (!archivos || archivos.length === 0) {
+            contenedor.innerHTML = '<p class="sin-archivos">No hay evidencias registradas.</p>';
+            return;
+        }
+
+        // Generamos todas las cards. Si hay 5 imágenes, se crearán 5 divs.
+        contenedor.innerHTML = archivos.map(arc => {
+            // Aseguramos que la ruta use el prefijo correcto si es necesario
+            const rutaCompleta = arc.ruta_archivo; 
+            const esPDF = rutaCompleta.toLowerCase().endsWith('.pdf');
+            
+                        // Dentro de cargarAdjuntosVisor...
+            // Dentro de cargarAdjuntosVisor, en el mapeo de archivos:
+            return `
+                <div class="card-archivo-mini" title="Click para abrir documento">
+                    ${esPDF 
+                        ? `<a href="${rutaCompleta}" target="_blank" class="enlace-pdf">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <span>Ver PDF</span>
+                        </a>` 
+                        : `<div class="contenedor-img-ajustada" onclick="window.open('${rutaCompleta}', '_blank')">
+                            <img src="${rutaCompleta}" alt="Evidencia" onerror="this.src='/imagenes/img-not-found.jpg'">
+                        </div>`
+                    }
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error("Error en visor:", error);
+        contenedor.innerHTML = '<p class="error">Error de conexión al cargar archivos.</p>';
+    }
 }
 
 async function manejarSubidaImagen(idEquipo, datosEquipo) {

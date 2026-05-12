@@ -26,6 +26,9 @@ app.use(express.json());
 // Servir tus archivos estáticos (HTML, CSS, JS)
 app.use(express.static(__dirname));
 
+// Agrega esta línea en tu server.js debajo de app.use(express.json())
+app.use('/imagenes', express.static(path.join(__dirname, 'public/imagenes')));
+
 
 // --- MIDDLEWARES DE SEGURIDAD ---
 
@@ -522,15 +525,15 @@ app.delete('/api/equipos/:id',verificarSesion, async (req, res) => {
 });
 
 // OBTENER para editar usando ID
-app.get('/api/equipos/:id',verificarSesion, async (req, res) => {
+app.get('/api/equipos/:id/imagenes', verificarSesion, async (req, res) => {
     try {
-        const resDB = await pool.query('SELECT * FROM equipo WHERE id = $1', [req.params.id]);
-        res.json(resDB.rows[0]);
+        const query = 'SELECT ruta_archivo FROM imagen_equipo WHERE id_equipo = $1';
+        const resultado = await pool.query(query, [req.params.id]);
+        res.json(resultado.rows); // Esto devuelve un array de objetos [{ruta_archivo: '...'}, ...]
     } catch (err) {
-        res.status(500).send(err.message);
+        res.status(500).send("Error al obtener archivos adjuntos");
     }
 });
-
 
 app.put('/api/equipos/:id',verificarSesion, async (req, res) => {
     const { id } = req.params;

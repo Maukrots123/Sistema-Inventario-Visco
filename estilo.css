@@ -950,3 +950,89 @@ canvas {
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
+
+
+/* Contenedor de la mini galería */
+.mini-galeria-visor {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    padding: 10px;
+}
+
+/* Contenedor específico para la imagen */
+.contenedor-img-ajustada {
+    width: 100%;
+    height: 180px; /* Altura fija para que todas las casillas sean iguales */
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f4f4f4;
+    border-radius: 4px;
+}
+
+/* La imagen dentro del contenedor */
+.contenedor-img-ajustada img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain; /* Esto evita que la imagen se estire o se corte */
+    transition: transform 0.3s ease;
+}
+
+/* Efecto visual al pasar el mouse */
+.card-archivo-mini:hover .contenedor-img-ajustada img {
+    transform: scale(1.05);
+}
+
+
+/* Ajuste para el cuerpo del modal */
+.form-modal-body {
+    max-height: 70vh; /* El modal no ocupará más del 70% de la altura de la pantalla */
+    overflow-y: auto; /* Activa la barra de desplazamiento vertical si es necesario */
+    padding-right: 10px; /* Espacio para que la barra no tape el contenido */
+}
+
+/* Estilo opcional para que la barra de scroll se vea moderna */
+.form-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.form-modal-body::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+.panel-archivos {
+    max-height: 400px; /* Altura máxima para la zona de fotos */
+    overflow-y: auto;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+
+/* Estilo para el enlace de PDF */
+.enlace-pdf {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #007bff; /* Azul estándar de enlaces */
+    text-decoration: none;
+    font-weight: 500;
+    padding: 10px;
+    border: 1px transition solid transparent;
+    border-radius: 4px;
+}
+
+.enlace-pdf i {
+    font-size: 1.2rem;
+    color: #dc3545; /* Rojo para el icono de PDF */
+}
+
+.enlace-pdf:hover {
+    color: #0056b3; /* Azul más oscuro al pasar el mouse */
+    text-decoration: underline;
+    background-color: #f0f7ff;
+}
