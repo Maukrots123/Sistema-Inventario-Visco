@@ -639,8 +639,7 @@ async function abrirInterfazRegistro(tipo, data = null) {
         </div>`;
         break;
 
-        case 'editar_equipo':
-            // 1. Cargamos los catálogos. Se guardan en la constante 'catalogos'
+ case 'editar_equipo':
             const catalogos = await inicializarCatalogos();
             
             if (!catalogos) {
@@ -650,30 +649,23 @@ async function abrirInterfazRegistro(tipo, data = null) {
 
             titulo = "Modificar Equipo de Inventario";
             icono = "fa-pen-to-square";
-            // Forzamos a que el ID sea solo la parte numérica antes del primer símbolo extraño
             const idLimpio = String(equipo.id).split(':')[0].trim();
             endpoint = `/api/equipos/${idLimpio}`;
 
-            // 2. Helper de comparación por texto (mantiene el ID como value)
             const generarHTMLOpciones = (lista, valorActual, esResponsable = false) => {
                 return lista.map(item => {
                     const nombreCatalogo = esResponsable 
                         ? `${item.nombre} ${item.apellido}`.trim() 
                         : item.nombre;
-
-                    // Comparamos contra el texto que ya trae tu equipo (clase, departamento, etc.)
-                    const isSelected = String(nombreCatalogo).toLowerCase() === String(valorActual).toLowerCase() 
-                        ? 'selected' 
-                        : '';
-
+                    const isSelected = String(nombreCatalogo).toLowerCase() === String(valorActual).toLowerCase() ? 'selected' : '';
                     return `<option value="${item.id}" ${isSelected}>${nombreCatalogo}</option>`;
                 }).join('');
             };
 
             htmlFormulario = `
                 <input type="hidden" name="id" value="${equipo.id}">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-height: 70vh; overflow-y: auto; padding-right: 10px;">
-                    
+                <div class="grid-formulario-limpio" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;">
+
                     <div class="campo">
                         <label>Clase de Equipo</label>
                         <select name="clase" required>
@@ -745,7 +737,29 @@ async function abrirInterfazRegistro(tipo, data = null) {
                         <label>Observaciones</label>
                         <textarea name="observaciones" rows="2">${equipo.observaciones || equipo.observacion || ''}</textarea>
                     </div>
+
+                    <div class="campo" style="grid-column: span 2; border-top: 2px solid #eee; padding-top: 15px; margin-top: 10px;">
+                        <label style="color: #2c3e50; font-weight: bold;">
+                            <i class="fa-solid fa-images"></i> Gestión de Documentos y Fotos
+                        </label>
+                        
+                        <div id="archivos-actuales-editar" class="preview-img-contenedor" style="margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 5px;">
+                            <p class="cargando-mini">Cargando archivos existentes...</p>
+                        </div>
+
+                        <div class="zona-drop" id="zona-arrastre" style="min-height: 80px;">
+                            <i class="fa-solid fa-plus"></i>
+                            <p>Añadir más archivos o <span>haz clic aquí</span></p>
+                            <input type="file" id="input-archivo" accept="image/*,application/pdf" multiple style="display:none">
+                        </div>
+                        <div id="vista-previa" class="preview-img-contenedor"></div>
+                    </div>
                 </div>`;
+
+            setTimeout(() => {
+                activarLogicaArrastre();
+                cargarArchivosParaEdicion(idLimpio);
+            }, 150);
             break;
 
             case 'subir_archivo':
@@ -785,7 +799,7 @@ async function abrirInterfazRegistro(tipo, data = null) {
                     manejarSubidaImagen(idCapturado, equipoImg);
                 };
 
-                activarLogicaArrastre(); 
+                activarLogicaArrastre();
             }, 100);
             break;
             
@@ -885,27 +899,17 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
     e.preventDefault();
 
     const btnGuardar = e.target.querySelector('.btn-guardar-maestro');
-    if (btnGuardar && btnGuardar.style.display === 'none') {
-        return; 
-    }
+    if (btnGuardar && btnGuardar.style.display === 'none') return;
 
-    if (e.target.querySelector('input[type="file"]')) {
-        return; 
-    }
+    const formData = new FormData(e.target);
+    const datos = Object.fromEntries(formData);
 
-    if (e.target.querySelector('input[type="file"]')) {
-        return; 
-    }
-    
-    // Extraemos los datos del formulario (incluyendo el nuevo campo Modelo)
-    const datos = Object.fromEntries(new FormData(e.target));
-
-    // Determinamos el método: PUT si hay un ID al final del endpoint, POST si no.
     const partesEndpoint = endpoint.split('/');
-    const ultimoSegmento = partesEndpoint.pop() || partesEndpoint.pop(); 
-    const metodoSugerido = (!isNaN(ultimoSegmento)) ? 'PUT' : 'POST';
+    const idLimpio = partesEndpoint.pop() || partesEndpoint.pop(); 
+    const metodoSugerido = (!isNaN(idLimpio)) ? 'PUT' : 'POST';
 
     try {
+        // 1. Guardar cambios de texto (Clase, Marca, etc.)
         const respuesta = await fetch(endpoint, {
             method: metodoSugerido,
             headers: { 'Content-Type': 'application/json' },
@@ -913,34 +917,32 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
         });
 
         if (respuesta.ok) {
-            alert("Operación realizada con éxito");
-            
-            // 1. Cerramos el modal/overlay
-            if (typeof overlay !== 'undefined' && overlay) {
-                overlay.remove();
+
+            // --- NUEVA LÓGICA: Borrado de imágenes marcadas ---
+            if (idsParaEliminar.length > 0) {
+                for (const idImg of idsParaEliminar) {
+                    await fetch(`/api/imagenes/${idImg}`, { method: 'DELETE' });
+                }
+                idsParaEliminar = []; // Limpiamos la lista tras el éxito
             }
-
-            // 2. REFRESCO DE LA TABLA
-            // Buscamos el contenedor principal donde se renderiza el inventario
-            const contenedorApp = document.getElementById('contenedor-dinamico') || 
-                     document.getElementById('contenedor-principal') || 
-                     document.querySelector('.main-content');
-
-            if (contenedorApp && typeof cargarInventario === 'function') {
-                // Ejecutamos la carga de la tabla para ver los cambios (incluido el Modelo)
-                await cargarInventario(contenedorApp); 
+            // 2. Si hay archivos nuevos en el array global, los subimos usando tu función probada
+            if (typeof archivosTemporales !== 'undefined' && archivosTemporales.length > 0) {
+                // Pasamos idLimpio y los datos del formulario para los metadatos (marca, serial)
+                await manejarSubidaImagen(idLimpio, datos);
             } else {
-                // Si el sistema no encuentra dónde refrescar, recarga la página por seguridad
-                window.location.reload();
+                // Si no había fotos nuevas, solo damos éxito y cerramos
+                alert("Equipo actualizado con éxito");
+                overlay.remove();
+                const contenedorApp = document.getElementById('contenedor-dinamico') || document.getElementById('contenedor-principal');
+                if (typeof cargarInventario === 'function') await cargarInventario(contenedorApp);
             }
-
         } else {
             const errorData = await respuesta.json();
-            alert("Error: " + (errorData.message || "No se pudo guardar en el servidor"));
+            alert("Error: " + (errorData.message || "Error en servidor"));
         }
     } catch (error) {
-        console.error("Error en la petición:", error);
-        alert("Error de conexión con el servidor");
+        console.error("Error crítico:", error);
+        alert("Error de conexión");
     }
 };
 
@@ -965,6 +967,61 @@ if (tipo === 'responsable' || tipo === 'departamento') {
     }
 }
 }
+
+async function cargarArchivosParaEdicion(idEquipo) {
+    const contenedor = document.getElementById('archivos-actuales-editar');
+    try {
+        // IMPORTANTE: Verifica si tu ruta de API es /api/equipos/${id}/imagenes o /api/imagenes/${id}
+        const res = await fetch(`/api/equipos/${idEquipo}/imagenes`); 
+        if(!res.ok) throw new Error("Error en red");
+        
+        const archivos = await res.json();
+
+        if (archivos.length === 0) {
+            contenedor.innerHTML = "<p style='font-size:0.8rem; color:#999; padding:10px;'>No hay archivos adjuntos.</p>";
+            return;
+        }
+
+        contenedor.innerHTML = archivos.map(arch => `
+            <div class="preview-item-mini" id="file-server-${arch.id}" style="position:relative; border:1px solid #ccc; border-radius:4px;">
+                ${arch.ruta_archivo.endsWith('.pdf') 
+                    ? '<div style="text-align:center; padding:10px;"><i class="fa-solid fa-file-pdf" style="color:red; font-size:2rem;"></i><br><small>PDF</small></div>' 
+                    : `<img src="${arch.ruta_archivo}" style="width:100%; height:80px; object-fit:cover; display:block;">`}
+                <button type="button" class="btn-quitar-archivo" onclick="eliminarArchivoServidor(${arch.id})" 
+                    style="position:absolute; top:0; right:0; background:red; color:white; border:none; cursor:pointer;">&times;</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error("Error cargando archivos:", e);
+        contenedor.innerHTML = "<div style='color:red; padding:10px;'>No se pudieron cargar los archivos previos.</div>";
+    }
+}
+
+
+let idsParaEliminar = []; // Lista de IDs de imágenes marcadas para borrar
+
+function eliminarArchivoServidor(idImagen) {
+    // Ya no preguntamos confirm si solo es marcado visual
+    // Guardamos el ID en nuestra lista de pendientes
+    if (!idsParaEliminar.includes(idImagen)) {
+        idsParaEliminar.push(idImagen);
+    }
+
+    // Ocultamos el elemento visualmente con una animación o simplemente remove
+    const elemento = document.getElementById(`file-server-${idImagen}`);
+    if (elemento) {
+        elemento.style.opacity = '0.3'; // Opcional: ponerlo semitransparente
+        elemento.style.pointerEvents = 'none'; // Desactivar clics
+        elemento.innerHTML += '<span style="position:absolute; top:30%; left:10%; background:red; color:white; font-size:0.7rem; padding:2px;">Pendiente borrar</span>';
+        
+        // Si prefieres que desaparezca de una vez:
+        // elemento.style.display = 'none';
+    }
+    console.log("IDs marcados para eliminación definitiva:", idsParaEliminar);
+}
+
+
+
 async function cargarAdjuntosVisor(idEquipo) {
     const contenedor = document.getElementById('visor-archivos-equipo');
     if (!contenedor) return;

@@ -631,6 +631,10 @@ textarea[name="observaciones"] {
     box-shadow: 0 15px 35px rgba(0,0,0,0.3);
     overflow: hidden;
     animation: slideIn 0.3s ease-out;
+    max-height: 90vh;
+    overflow-y: auto; /* Solo un scroll aquí */
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header-sistema {
@@ -1134,4 +1138,14 @@ canvas {
 .btn-quitar-archivo:hover {
     background: #cc0000;
     transform: scale(1.1);
+}
+
+
+#archivos-actuales-editar {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    min-height: 100px;
 }

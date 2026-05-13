@@ -528,7 +528,7 @@ app.delete('/api/equipos/:id',verificarSesion, async (req, res) => {
 // OBTENER para editar usando ID
 app.get('/api/equipos/:id/imagenes', verificarSesion, async (req, res) => {
     try {
-        const query = 'SELECT ruta_archivo FROM imagen_equipo WHERE id_equipo = $1';
+        const query = 'SELECT id, ruta_archivo FROM imagen_equipo WHERE id_equipo = $1';
         const resultado = await pool.query(query, [req.params.id]);
         res.json(resultado.rows); // Esto devuelve un array de objetos [{ruta_archivo: '...'}, ...]
     } catch (err) {
@@ -585,6 +585,53 @@ app.post('/api/equipos/:id/imagenes', upload.single('imagen'), async (req, res) 
     } catch (error) {
         console.error("Error al registrar en BD:", error.message);
         res.status(500).json({ message: "Error al registrar en la base de datos" });
+    }
+});
+
+app.delete('/api/imagenes/:id', verificarSesion, async (req, res) => {
+    try {
+        const idImagen = req.params.id;
+
+        const consulta = await pool.query("SELECT ruta_archivo FROM imagen_equipo WHERE id = $1", [idImagen]);
+        
+        if (consulta.rows.length === 0) {
+            return res.status(404).send("Imagen no encontrada");
+        }
+
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Supongamos que ruta_archivo es "/imagenes/pol_0009_553.pdf"
+        const rutaBD = consulta.rows[0].ruta_archivo;
+
+        // CORRECCIÓN: Forzamos la entrada a la carpeta 'public'
+        // Si rutaBD ya incluye "/imagenes", solo necesitamos entrar a "public"
+        const rutaCompleta = path.join(process.cwd(), 'public', rutaBD);
+
+        console.log("Intentando borrar en:", rutaCompleta);
+
+        if (fs.existsSync(rutaCompleta)) {
+            fs.unlinkSync(rutaCompleta);
+            console.log("✅ Archivo físico eliminado con éxito.");
+        } else {
+            console.warn("⚠️ No se encontró el archivo. Verificando ruta sin el slash inicial...");
+            
+            // Reintento por si la ruta en BD tiene un slash que cause problemas en Windows
+            const rutaAlternativa = path.join(process.cwd(), 'public', rutaBD.startsWith('/') ? rutaBD.substring(1) : rutaBD);
+            if (fs.existsSync(rutaAlternativa)) {
+                fs.unlinkSync(rutaAlternativa);
+                console.log("✅ Archivo eliminado en ruta alternativa.");
+            } else {
+                console.error("❌ El archivo definitivamente no existe en public/imagenes");
+            }
+        }
+
+        await pool.query("DELETE FROM imagen_equipo WHERE id = $1", [idImagen]);
+        res.send("Eliminado correctamente");
+
+    } catch (err) {
+        console.error("Error al eliminar:", err);
+        res.status(500).send("Error interno");
     }
 });
 
