@@ -1,4 +1,3 @@
-
 async function cambiarSeccion(nombreSeccion, elemento) {
     const contenedor = document.getElementById('contenedor-dinamico');
     const titulo = document.getElementById('titulo-seccion');
@@ -291,11 +290,13 @@ function inicializarLogicaPanel() {
     // 4. Actualizar tarjetas superiores
     const elTotal = document.getElementById('total-activos');
     const elAsignados = document.getElementById('total-asignados');
+    const elFallas = document.getElementById('total-fallas');
     const elClase = document.getElementById('clase-dominante');
     const elAct = document.getElementById('ultima-act');
 
     if (elTotal) elTotal.innerText = total;
     if (elAsignados) elAsignados.innerText = conteoEstados.asignado;
+    if (elFallas) elFallas.innerText = conteoEstados.dañado;
     if (elClase) elClase.innerText = claseMax;
     if (elAct) elAct.innerText = `Sincronizado: ${new Date().toLocaleTimeString()}`;
 
@@ -610,38 +611,49 @@ async function abrirInterfazRegistro(tipo, data = null) {
             break;
         
         case 'registrar_usuario':
-        titulo = "Registrar Nuevo Usuario";
-        icono = "fa-user-plus";
-        endpoint = "/api/registrar-usuario";
-        htmlFormulario = `
-        <div class="campo">
-            <label>Cédula</label>
-            <input type="text" name="cedula" placeholder="Ej: 12345678" required>
-        </div>
-        <div class="campo">
-            <label>Nombre de usuario (Login)</label>
-            <input type="text" name="username" placeholder="Ej: mau.arismendi" required>
-        </div>
-        <div class="campo">
-            <label>Nombre Real</label>
-            <input type="text" name="nombre_real" placeholder="Ej: Mauricio" required>
-        </div>
-        <div class="campo">
-            <label>Apellido</label>
-            <input type="text" name="apellido" placeholder="Ej: Arismendi" required>
-        </div>
-        <div class="campo">
-            <label>Contraseña</label>
-            <input type="password" name="password" required>
-        </div>
-        <div class="campo">
-            <label>Rol de Acceso</label>
-            <select name="rol" required>
-                <option value="usuario">Usuario Normal</option>
-                <option value="admin">Administrador</option>
-            </select>
-        </div>`;
-        break;
+            //Para hacer que un usuario tambien registre cambia la linea del condicional
+            //if (window.usuarioRol !== 'admin' && window.usuarioRol !== 'usuario') {
+            if (window.usuarioRol !== 'admin') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Acceso denegado',
+                    text: 'Solo un administrador puede registrar nuevos usuarios.'
+                });
+                return;
+            }
+
+            titulo = "Registrar Nuevo Usuario";
+            icono = "fa-user-plus";
+            endpoint = "/api/registrar-usuario";
+            htmlFormulario = `
+                <div class="campo">
+                    <label>Cédula</label>
+                    <input type="text" name="cedula" placeholder="Ej: 12345678" required>
+                </div>
+                <div class="campo">
+                    <label>Nombre de usuario (Login)</label>
+                    <input type="text" name="username" placeholder="Ej: mau.arismendi" required>
+                </div>
+                <div class="campo">
+                    <label>Nombre Real</label>
+                    <input type="text" name="nombre_real" placeholder="Ej: Mauricio" required>
+                </div>
+                <div class="campo">
+                    <label>Apellido</label>
+                    <input type="text" name="apellido" placeholder="Ej: Arismendi" required>
+                </div>
+                <div class="campo">
+                    <label>Contraseña</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="campo">
+                    <label>Rol de Acceso</label>
+                    <select name="rol" required>
+                        <option value="usuario">Usuario Normal</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>`;
+            break;
 
  case 'editar_equipo':
             const catalogos = await inicializarCatalogos();
@@ -962,11 +974,33 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
                 await actualizarVistasDespuesEdicion();
             }
         } else {
-            const errorData = await respuesta.json();
+            let errorMsg = "No se pudo completar la operación";
+            const textBody = await respuesta.text();
+            try {
+                const errorData = JSON.parse(textBody);
+                // Mensajes más amigables y concretos
+                if (errorData.error && errorData.error.includes('Dato duplicado')) {
+                    errorMsg = errorData.error; // Ya viene formateado del servidor
+                } else if (errorData.error) {
+                    errorMsg = `Error: ${errorData.error}`;
+                } else if (errorData.message) {
+                    errorMsg = errorData.message;
+                } else {
+                    errorMsg = "Ocurrió un error inesperado. Inténtalo de nuevo.";
+                }
+            } catch (parseError) {
+                // Si no es JSON, simplificar mensajes comunes
+                if (textBody.includes('llave duplicada') || textBody.includes('duplicate key')) {
+                    errorMsg = "Dato duplicado: ya existe un registro igual en el sistema.";
+                } else if (textBody && textBody.trim()) {
+                    errorMsg = textBody.length > 100 ? "Error del servidor. Contacta al administrador." : textBody;
+                }
+            }
+
             Swal.fire({
                 icon: 'error',
                 title: 'Error en el servidor',
-                text: errorData.message || "No se pudo completar la operación"
+                text: errorMsg
             });
         }
     } catch (error) {
@@ -1169,6 +1203,22 @@ async function manejarSubidaImagen(idEquipo, datosEquipo) {
 }
 
 
+async function actualizarVistasDespuesEdicion() {
+    const tituloSeccion = document.getElementById('titulo-seccion')?.innerText || '';
+    const contenedor = document.getElementById('contenedor-dinamico');
+    const enlaceDashboard = document.querySelector('.menu-navegacion a[onclick*=\'dashboard\']');
+
+    if (tituloSeccion === 'Panel de Control' && enlaceDashboard) {
+        await cambiarSeccion('dashboard', enlaceDashboard);
+        return;
+    }
+
+    if (tituloSeccion === 'Gestión de Inventario' && contenedor) {
+        await cargarInventario(contenedor);
+        return;
+    }
+}
+
 let archivosTemporales = []; // Array global para acumular archivos
 
 function activarLogicaArrastre() {
@@ -1345,7 +1395,7 @@ function actualizarCuerpoTabla(lista) {
                     </div>
                 </td>
                 <td>${fechaMod}</td>
-                <td>${equipo.usuario_modificacion || 'Usuario desconocido'}</td>
+                <td>${equipo.usuario_modificacion || 'Sistema'}</td>
                 <td class="celda-acciones">
                     <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${equipo.id}')">
                         <i class="fa-solid fa-eye"></i>
@@ -1363,61 +1413,10 @@ function actualizarCuerpoTabla(lista) {
             </tr>
         `;
     }).join('');
-}
 
-async function refrescarTodosLosEquipos() {
-    try {
-        const respuesta = await fetch('/api/equipos');
-        if (respuesta.ok) {
-            todosLosEquipos = await respuesta.json();
-        } else {
-            console.error('No se pudo refrescar la lista de equipos.');
-        }
-    } catch (error) {
-        console.error('Error refrescando equipos:', error);
-    }
-}
+    
 
-async function actualizarVistasDespuesEdicion() {
-    await refrescarTodosLosEquipos();
-
-    const dashboardVisible = !!document.getElementById('canvas-barras') || !!document.getElementById('canvas-dona');
-    const inventarioVisible = !!document.querySelector('.contenedor-inventario') || !!document.getElementById('cuerpo-tabla');
-
-    if (dashboardVisible) {
-        inicializarLogicaPanel();
-    } else if (inventarioVisible && typeof cargarInventario === 'function') {
-        const inventarioContenedor = document.querySelector('.contenedor-inventario') || document.getElementById('contenedor-dinamico') || document.getElementById('contenedor-principal');
-        if (inventarioContenedor) {
-            await cargarInventario(inventarioContenedor);
-        }
-    }
-}
-
-function actualizarDepartamentosEnEditModal(catalogos, equipo) {
-    const selGerencia = document.getElementById('select-gerencia');
-    const selDepartamento = document.getElementById('select-departamento');
-    if (!selGerencia || !selDepartamento || !catalogos?.departamentos) return;
-
-    const valorActualDepto = String(equipo.departamento || equipo.id_departamento || '').toLowerCase();
-
-    const filtrar = () => {
-        const gerenciaSeleccionada = selGerencia.value;
-        const departamentosFiltrados = catalogos.departamentos.filter(dep => String(dep.id_gerencia) === String(gerenciaSeleccionada));
-
-        if (departamentosFiltrados.length === 0) {
-            selDepartamento.innerHTML = '<option value="">No hay departamentos para esta gerencia</option>';
-            return;
-        }
-
-        selDepartamento.innerHTML = '<option value="">Seleccione Departamento...</option>' + departamentosFiltrados.map(dep => {
-            const isSelected = String(dep.id) === valorActualDepto || String(dep.nombre).toLowerCase() === valorActualDepto ? 'selected' : '';
-            return `<option value="${dep.id}" ${isSelected}>${dep.nombre}</option>`;
-        }).join('');
-    };
-
-    selGerencia.addEventListener('change', filtrar);
-    filtrar();
+    
 }
 
 
@@ -1699,7 +1698,7 @@ function cargarInterfazConfig(contenedor) {
                 <div class="card-config">
                     <h4>Seguridad</h4>
                     <p>Gestión de usuarios y niveles de acceso.</p>
-                    <button class="btn-secundario" onclick="abrirInterfazRegistro('registrar_usuario')"  >Administrar Usuarios</button>
+                    <button class="btn-secundario" onclick="abrirInterfazRegistro('registrar_usuario')">Administrar Usuarios</button>
                 </div>
             </div>
         </div>

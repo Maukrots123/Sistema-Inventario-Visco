@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
+        window.usuarioRol = 'usuario';
+        window.usuarioNombre = 'Usuario';
+
         // Este código se ejecuta SIEMPRE al cargar la página
         fetch('/api/verificar-sesion')
             .then(res => {
@@ -16,9 +19,10 @@
                 return res.json();
             })
             .then(data => {
-                const usuario = data.username || 'Usuario';
-                const rol = data.rol || 'Invitado';
-                const avatar = usuario
+                window.usuarioRol = data.rol || 'usuario';
+                window.usuarioNombre = data.username || 'Usuario';
+
+                const avatar = window.usuarioNombre
                     .split(/[^a-zA-Z0-9]+/)
                     .filter(Boolean)
                     .map(part => part[0].toUpperCase())
@@ -31,8 +35,8 @@
                     const rolEl = document.getElementById('perfil-rol');
 
                     if (avatarEl) avatarEl.innerText = avatar;
-                    if (nombreEl) nombreEl.innerText = usuario;
-                    if (rolEl) rolEl.innerText = rol;
+                    if (nombreEl) nombreEl.innerText = window.usuarioNombre;
+                    if (rolEl) rolEl.innerText = window.usuarioRol;
                 });
             })
             .catch(() => window.location.href = 'login.html');

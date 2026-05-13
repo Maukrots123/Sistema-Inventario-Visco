@@ -101,7 +101,7 @@ app.get('/', (req, res) => {
     res.redirect('/login.html');
 });
 
-app.post('/api/registrar-usuario', verificarSesion, esAdmin, async (req, res) => {
+app.post('/api/registrar-usuario', verificarSesion, async (req, res) => {
     // Nota: Ahora recibimos 'username' del form, pero lo guardamos en 'usuario_nombre'
     const { username, password, cedula, nombre_real, apellido, rol } = req.body;
 
@@ -123,7 +123,18 @@ app.post('/api/registrar-usuario', verificarSesion, esAdmin, async (req, res) =>
         res.status(201).json({ mensaje: "Usuario registrado con éxito", id: resultado.rows[0].id });
     } catch (err) {
         console.error("Error al registrar:", err.message);
-        res.status(500).send("Error interno: " + err.message);
+        if (err.code === '23505') {
+            let errorMessage = 'Dato duplicado';
+            if (err.constraint === 'usuario_cedula_key' || err.detail?.includes('(cedula)')) {
+                errorMessage = 'Dato duplicado: la cédula ya está registrada.';
+            } else if (err.constraint === 'unique_usuario_nombre' || err.detail?.includes('(usuario_nombre)')) {
+                errorMessage = 'Dato duplicado: el nombre de usuario ya existe.';
+            } else {
+                errorMessage = 'Dato duplicado: ya existe un valor igual en el sistema.';
+            }
+            return res.status(409).json({ error: errorMessage });
+        }
+        res.status(500).json({ error: 'Error interno: ' + err.message });
     }
 });
 
