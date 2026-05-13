@@ -1036,3 +1036,31 @@ canvas {
     text-decoration: underline;
     background-color: #f0f7ff;
 }
+
+
+/* Forzar que los grupos de información se apilen verticalmente */
+.visualizacion-equipo .panel-datos {
+    display: flex;
+    flex-direction: column; /* Alineación vertical */
+    gap: 20px;              /* Espacio entre secciones */
+}
+
+/* Asegurar que cada grupo ocupe el 100% */
+.grupo-info {
+    width: 100%;
+    border-bottom: 1px solid #f0f0f0; /* Separador sutil */
+    padding-bottom: 10px;
+}
+
+/* Estilo para los label dentro de la lista vertical */
+.grupo-info label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #f8f9fa; /* Fondo ligero para resaltar el encabezado */
+    padding: 8px;
+    border-radius: 4px;
+    color: #333;
+    font-weight: bold;
+    margin-bottom: 10px;
+}

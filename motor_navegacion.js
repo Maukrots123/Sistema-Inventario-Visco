@@ -790,61 +790,67 @@ async function abrirInterfazRegistro(tipo, data = null) {
             break;
             
             case 'ver_equipo':
-    const idVer = data;
-    const e = todosLosEquipos.find(item => item.id == idVer);
-    
-    titulo = "Ficha Técnica del Activo";
-    icono = "fa-eye";
+            const idVer = data;
+            const e = todosLosEquipos.find(item => item.id == idVer);
+            
+            titulo = "Ficha Técnica del Activo";
+            icono = "fa-eye";
 
-    if (!e) {
-        htmlFormulario = `<p class="error">Error: Equipo no encontrado.</p>`;
-        break;
-    }
+            if (!e) {
+                htmlFormulario = `<p class="error">Error: Equipo no encontrado.</p>`;
+                break;
+            }
 
-    htmlFormulario = `
-        <div class="visualizacion-equipo">
-            <div class="panel-datos">
-                <div class="grupo-info">
-                    <label><i class="fa-solid fa-microchip"></i> Hardware</label>
-                    <p><strong>Clase:</strong> ${e.clase || 'N/A'}</p>
-                    <p><strong>Marca/Modelo:</strong> ${e.marca} ${e.modelo || ''}</p>
-                    <p><strong>Serial:</strong> <span class="badge-serial">${e.serial}</span></p>
-                    <p><strong>FMO:</strong> ${e.fmo || 'Sin asignar'}</p>
+            htmlFormulario = `
+                <div class="visualizacion-equipo">
+                    <div class="panel-datos">
+                        <div class="grupo-info">
+                            <label><i class="fa-solid fa-microchip"></i> Hardware</label>
+                            <p><strong>Clase:</strong> ${e.clase || 'N/A'}</p>
+                            <p><strong>Marca/Modelo:</strong> ${e.marca} ${e.modelo || ''}</p>
+                            <p><strong>Serial:</strong> <span class="badge-serial">${e.serial}</span></p>
+                            <p><strong>FMO:</strong> ${e.fmo || 'Sin asignar'}</p>
+                        </div>
+                        
+                        <div class="grupo-info">
+                            <label><i class="fa-solid fa-location-dot"></i> Ubicación y Control</label>
+                            <p><strong>Estado:</strong> <span class="status-${String(e.estado).toLowerCase()}">${e.estado}</span></p>
+                            <p><strong>Gerencia:</strong> ${e.gerencia || 'N/A'}</p>
+                            <p><strong>Departamento:</strong> ${e.departamento || 'N/A'}</p>
+                            <p><strong>Responsable:</strong> ${e.asignado || 'Sin responsable'}</p>
+                        </div>
+
+                        <div class="grupo-info">
+                            <label><i class="fa-solid fa-clock"></i> Trazabilidad</label>
+                            <p><strong>Fecha Registro:</strong> ${e.fecha_registro ? new Date(e.fecha_registro).toLocaleDateString() : 'No registrada'}</p>
+                            <p><strong>Última Modificación:</strong> ${e.fecha_modificacion ? new Date(e.fecha_modificacion).toLocaleString() : 'Sin cambios'}</p>
+                        </div>
+
+                        <div class="grupo-info full-width">
+                            <label><i class="fa-solid fa-comment"></i> Observaciones</label>
+                            <p class="txt-observacion">${e.observaciones || e.observacion || 'Sin notas adicionales.'}</p>
+                        </div>
+                    </div>
+
+                    <div class="panel-archivos">
+                        <label><i class="fa-solid fa-paperclip"></i> Documentos Adjuntos</label>
+                        <div id="visor-archivos-equipo" class="mini-galeria-visor">
+                            <p class="cargando-mini">Cargando archivos...</p>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="grupo-info">
-                    <label><i class="fa-solid fa-location-dot"></i> Ubicación y Control</label>
-                    <p><strong>Estado:</strong> <span class="status-${String(e.estado).toLowerCase()}">${e.estado}</span></p>
-                    <p><strong>Gerencia:</strong> ${e.gerencia || 'N/A'}</p>
-                    <p><strong>Departamento:</strong> ${e.departamento || 'N/A'}</p>
-                    <p><strong>Responsable:</strong> ${e.asignado || 'Sin responsable'}</p>
-                </div>
+            `;
 
-                <div class="grupo-info full-width">
-                    <label><i class="fa-solid fa-comment"></i> Observaciones</label>
-                    <p class="txt-observacion">${e.observaciones || e.observacion || 'Sin notas adicionales.'}</p>
-                </div>
-            </div>
+            setTimeout(() => {
+            const btnGuardar = document.querySelector('.btn-guardar-maestro');
+            const instruccion = document.querySelector('.instruccion');
+            
+            if (btnGuardar) btnGuardar.style.display = 'none'; // Ocultamos el botón de acción
+            if (instruccion) instruccion.innerText = "Detalles técnicos registrados en el sistema";
 
-            <div class="panel-archivos">
-                <label><i class="fa-solid fa-paperclip"></i> Documentos Adjuntos</label>
-                <div id="visor-archivos-equipo" class="mini-galeria-visor">
-                    <p class="cargando-mini">Cargando archivos...</p>
-                </div>
-            </div>
-        </div>
-    `;
-
-    setTimeout(() => {
-    const btnGuardar = document.querySelector('.btn-guardar-maestro');
-    const instruccion = document.querySelector('.instruccion');
-    
-    if (btnGuardar) btnGuardar.style.display = 'none'; // Ocultamos el botón de acción
-    if (instruccion) instruccion.innerText = "Detalles técnicos registrados en el sistema";
-
-    cargarAdjuntosVisor(idVer);
-}, 150);
-    break;
+            cargarAdjuntosVisor(idVer);
+        }, 150);
+            break;
     }
 
     
