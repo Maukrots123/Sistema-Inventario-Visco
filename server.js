@@ -86,7 +86,11 @@ const upload = multer({ storage: storage });
 // Endpoint para que el frontend verifique si hay sesión al cargar la página
 app.get('/api/verificar-sesion', (req, res) => {
     if (req.session.usuarioId) {
-        res.json({ logueado: true, rol: req.session.rol });
+        res.json({ 
+            logueado: true, 
+            rol: req.session.rol,
+            username: req.session.usuarioNombre || null
+        });
     } else {
         res.status(401).json({ logueado: false });
     }
@@ -141,6 +145,7 @@ app.post('/api/login', async (req, res) => {
         if (esValida) {
             req.session.usuarioId = usuario.id;
             req.session.rol = usuario.rol; 
+            req.session.usuarioNombre = usuario.usuario_nombre;
 
             // Lógica de "Recordar siempre" condicional:
             if (recordar) {
@@ -153,7 +158,8 @@ app.post('/api/login', async (req, res) => {
             
             return res.status(200).json({ 
                 mensaje: "Bienvenido",
-                rol: usuario.rol 
+                rol: usuario.rol,
+                username: usuario.usuario_nombre
             });
         } else {
             return res.status(401).send("Usuario o contraseña incorrectos");
@@ -171,26 +177,28 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/equipos',verificarSesion, async (req, res) => {
     try {
         const query = `
-            SELECT 
+            SELECT
                 e.id,
-                e.fmo, 
-                e.serial, 
-                e.marca, 
-                e.modelo, 
-                e.estado, 
-                e.tipo, 
-                e.observacion AS observaciones, 
+                e.fmo,
+                e.serial,
+                e.marca,
+                e.modelo,
+                e.estado,
+                e.tipo,
+                e.observacion AS observaciones,
                 e.fecha_registro,
                 e.fecha_modificacion,
-                c.nombre AS clase, 
+                c.nombre AS clase,
                 d.nombre AS departamento,
-                g.nombre AS gerencia,    
-                r.nombre || ' ' || r.apellido AS asignado 
+                g.nombre AS gerencia,
+                r.nombre || ' ' || r.apellido AS asignado,
+                u.nombre AS usuario_modificacion
             FROM equipo e
             LEFT JOIN clase_equipo c ON e.id_clase = c.id
             LEFT JOIN departamento d ON e.id_departamento = d.id
             LEFT JOIN gerencia g ON d.id_gerencia = g.id
             LEFT JOIN responsable r ON e.id_responsable = r.id
+            LEFT JOIN usuario u ON e.id_usuario = u.id
             ORDER BY e.fecha_modificacion DESC;
         `;
         const resultado = await pool.query(query);
@@ -226,14 +234,14 @@ app.post('/api/equipos', verificarSesion, async (req, res) => {
         // --- INSERCIÓN DEL EQUIPO ---
         const queryEquipo = `
             INSERT INTO equipo (
-                fmo, serial, tipo, id_clase, marca, modelo, 
-                id_departamento, id_responsable, estado, 
-                observacion, fecha_modificacion
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+                fmo, serial, tipo, id_clase, marca, modelo,
+                id_departamento, id_responsable, estado,
+                observacion, fecha_modificacion, id_usuario
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, $11)
             RETURNING *;
         `;
 
-        const valores = [fmo, serial, tipo, idClaseFinal, marca, modelo, departamento, responsable, estado, observaciones];
+        const valores = [fmo, serial, tipo, idClaseFinal, marca, modelo, departamento, responsable, estado, observaciones, req.session.usuarioId];
         const resultado = await pool.query(queryEquipo, valores);
 
         res.status(201).json({ mensaje: 'Equipo y clase registrados con éxito', data: resultado.rows[0] });
@@ -280,19 +288,20 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
 
         // 2. ACTUALIZACIÓN EN LA TABLA 'equipo'
         const queryUpdate = `
-            UPDATE equipo 
-            SET 
-                fmo = $1, 
-                serial = $2, 
-                tipo = $3, 
-                id_clase = $4, 
-                marca = $5, 
-                modelo = $6, 
-                id_departamento = $7, 
-                id_responsable = $8, 
-                estado = $9, 
-                observacion = $10, 
-                fecha_modificacion = CURRENT_TIMESTAMP
+            UPDATE equipo
+            SET
+                fmo = $1,
+                serial = $2,
+                tipo = $3,
+                id_clase = $4,
+                marca = $5,
+                modelo = $6,
+                id_departamento = $7,
+                id_responsable = $8,
+                estado = $9,
+                observacion = $10,
+                fecha_modificacion = CURRENT_TIMESTAMP,
+                id_usuario = $12
             WHERE id = $11
             RETURNING *;
         `;
@@ -308,7 +317,8 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
             responsable,    // $8 (FK)
             estado,         // $9
             observaciones,  // $10
-            id              // $11
+            id,             // $11
+            req.session.usuarioId // $12
         ];
 
         const resultado = await pool.query(queryUpdate, valores);
@@ -542,11 +552,11 @@ app.put('/api/equipos/:id',verificarSesion, async (req, res) => {
 
     try {
         const query = `
-            UPDATE equipo 
-            SET serial = $1, marca = $2, estado = $3, id_responsable = $4, observaciones = $5, fecha_modificacion = NOW()
+            UPDATE equipo
+            SET serial = $1, marca = $2, estado = $3, id_responsable = $4, observaciones = $5, fecha_modificacion = NOW(), id_usuario = $7
             WHERE id = $6
         `;
-        await pool.query(query, [serial, marca, estado, id_responsable, observaciones, id]);
+        await pool.query(query, [serial, marca, estado, id_responsable, observaciones, id, req.session.usuarioId]);
         res.status(200).json({ message: "Equipo actualizado con éxito" });
     } catch (err) {
         res.status(500).json({ error: "Error al actualizar: " + err.message });

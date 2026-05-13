@@ -11,8 +11,29 @@
         fetch('/api/verificar-sesion')
             .then(res => {
                 if (!res.ok) {
-                    window.location.href = 'login.html';
+                    throw new Error('No autorizado');
                 }
+                return res.json();
+            })
+            .then(data => {
+                const usuario = data.username || 'Usuario';
+                const rol = data.rol || 'Invitado';
+                const avatar = usuario
+                    .split(/[^a-zA-Z0-9]+/)
+                    .filter(Boolean)
+                    .map(part => part[0].toUpperCase())
+                    .slice(0, 2)
+                    .join('') || 'US';
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    const avatarEl = document.getElementById('avatar-perfil');
+                    const nombreEl = document.getElementById('perfil-usuario');
+                    const rolEl = document.getElementById('perfil-rol');
+
+                    if (avatarEl) avatarEl.innerText = avatar;
+                    if (nombreEl) nombreEl.innerText = usuario;
+                    if (rolEl) rolEl.innerText = rol;
+                });
             })
             .catch(() => window.location.href = 'login.html');
     </script>
@@ -22,9 +43,9 @@
     <div class="contenedor-principal">
         <aside class="barra-lateral">
             <div class="perfil-usuario">
-                <div class="avatar">MA</div>
-                <h3>Mauricio A.</h3>
-                <p>Pasante IT</p>
+                <div class="avatar" id="avatar-perfil">US</div>
+                <h3 id="perfil-usuario">Usuario</h3>
+                <p id="perfil-rol">Invitado</p>
             </div>
             <nav class="menu-navegacion">
                 <a href="#" onclick="cambiarSeccion('dashboard', this)"><i class="fa-solid fa-chart-line"></i> Panel de Control</a>

@@ -1345,7 +1345,7 @@ function actualizarCuerpoTabla(lista) {
                     </div>
                 </td>
                 <td>${fechaMod}</td>
-                <td>${equipo.usuario_modificacion || 'Sistema'}</td>
+                <td>${equipo.usuario_modificacion || 'Usuario desconocido'}</td>
                 <td class="celda-acciones">
                     <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${equipo.id}')">
                         <i class="fa-solid fa-eye"></i>

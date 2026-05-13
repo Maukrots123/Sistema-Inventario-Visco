@@ -128,6 +128,7 @@ CREATE TABLE public.equipo (
     id_clase integer,
     id_departamento integer,
     id_responsable integer,
+    id_usuario integer,
     modelo character varying(50)
 );
 
@@ -646,6 +647,15 @@ ALTER TABLE ONLY public.equipo
 
 ALTER TABLE ONLY public.equipo
     ADD CONSTRAINT equipo_id_responsable_fkey FOREIGN KEY (id_responsable) REFERENCES public.responsable(id);
+
+
+--
+-- TOC entry 4929 (class 2606 OID 16522)
+-- Name: equipo equipo_id_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.equipo
+    ADD CONSTRAINT equipo_id_usuario_fkey FOREIGN KEY (id_usuario) REFERENCES public.usuario(id);
 
 
 --
