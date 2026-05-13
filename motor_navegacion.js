@@ -665,7 +665,7 @@ async function abrirInterfazRegistro(tipo, data = null) {
                     const nombreCatalogo = esResponsable 
                         ? `${item.nombre} ${item.apellido}`.trim() 
                         : item.nombre;
-                    const isSelected = String(nombreCatalogo).toLowerCase() === String(valorActual).toLowerCase() ? 'selected' : '';
+                    const isSelected = (String(item.id) === String(valorActual)) || String(nombreCatalogo).toLowerCase() === String(valorActual).toLowerCase() ? 'selected' : '';
                     return `<option value="${item.id}" ${isSelected}>${nombreCatalogo}</option>`;
                 }).join('');
             };
@@ -735,9 +735,9 @@ async function abrirInterfazRegistro(tipo, data = null) {
                         <label>Estado Actual</label>
                         <select name="estado" required>
                             <option value="Asignado" ${equipo.estado === 'Asignado' ? 'selected' : ''}>Asignado</option>
-                            <option value="Almacén" ${equipo.estado === 'Almacén' ? 'selected' : ''}>En Almacén</option>
-                            <option value="Reparación" ${equipo.estado === 'Reparación' ? 'selected' : ''}>En Reparación</option>
-                            <option value="Desincorporado" ${equipo.estado === 'Desincorporado' ? 'selected' : ''}>Desincorporado</option>
+                            <option value="Almacen" ${equipo.estado === 'Almacen' ? 'selected' : ''}>Almacen</option>
+                            <option value="Dañado" ${equipo.estado === 'Dañado' ? 'selected' : ''}>Dañado</option>
+                            <option value="Revision" ${equipo.estado === 'Revision' ? 'selected' : ''}>En Revisión</option>
                         </select>
                     </div>
 
@@ -767,6 +767,7 @@ async function abrirInterfazRegistro(tipo, data = null) {
             setTimeout(() => {
                 activarLogicaArrastre();
                 cargarArchivosParaEdicion(idLimpio);
+                actualizarDepartamentosEnEditModal(catalogos, equipo);
             }, 150);
             break;
 
@@ -958,8 +959,7 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
                 });
 
                 overlay.remove();
-                const contenedorApp = document.getElementById('contenedor-dinamico') || document.getElementById('contenedor-principal');
-                if (typeof cargarInventario === 'function') await cargarInventario(contenedorApp);
+                await actualizarVistasDespuesEdicion();
             }
         } else {
             const errorData = await respuesta.json();
@@ -1165,10 +1165,7 @@ async function manejarSubidaImagen(idEquipo, datosEquipo) {
     const modal = document.getElementById('modal-emergente');
     if (modal) modal.remove();
     
-    const contenedor = document.getElementById('contenedor-dinamico') || document.querySelector('.main-content');
-    if (typeof cargarInventario === 'function') {
-        await cargarInventario(contenedor);
-    }
+    await actualizarVistasDespuesEdicion();
 }
 
 
@@ -1366,10 +1363,61 @@ function actualizarCuerpoTabla(lista) {
             </tr>
         `;
     }).join('');
+}
 
-    
+async function refrescarTodosLosEquipos() {
+    try {
+        const respuesta = await fetch('/api/equipos');
+        if (respuesta.ok) {
+            todosLosEquipos = await respuesta.json();
+        } else {
+            console.error('No se pudo refrescar la lista de equipos.');
+        }
+    } catch (error) {
+        console.error('Error refrescando equipos:', error);
+    }
+}
 
-    
+async function actualizarVistasDespuesEdicion() {
+    await refrescarTodosLosEquipos();
+
+    const dashboardVisible = !!document.getElementById('canvas-barras') || !!document.getElementById('canvas-dona');
+    const inventarioVisible = !!document.querySelector('.contenedor-inventario') || !!document.getElementById('cuerpo-tabla');
+
+    if (dashboardVisible) {
+        inicializarLogicaPanel();
+    } else if (inventarioVisible && typeof cargarInventario === 'function') {
+        const inventarioContenedor = document.querySelector('.contenedor-inventario') || document.getElementById('contenedor-dinamico') || document.getElementById('contenedor-principal');
+        if (inventarioContenedor) {
+            await cargarInventario(inventarioContenedor);
+        }
+    }
+}
+
+function actualizarDepartamentosEnEditModal(catalogos, equipo) {
+    const selGerencia = document.getElementById('select-gerencia');
+    const selDepartamento = document.getElementById('select-departamento');
+    if (!selGerencia || !selDepartamento || !catalogos?.departamentos) return;
+
+    const valorActualDepto = String(equipo.departamento || equipo.id_departamento || '').toLowerCase();
+
+    const filtrar = () => {
+        const gerenciaSeleccionada = selGerencia.value;
+        const departamentosFiltrados = catalogos.departamentos.filter(dep => String(dep.id_gerencia) === String(gerenciaSeleccionada));
+
+        if (departamentosFiltrados.length === 0) {
+            selDepartamento.innerHTML = '<option value="">No hay departamentos para esta gerencia</option>';
+            return;
+        }
+
+        selDepartamento.innerHTML = '<option value="">Seleccione Departamento...</option>' + departamentosFiltrados.map(dep => {
+            const isSelected = String(dep.id) === valorActualDepto || String(dep.nombre).toLowerCase() === valorActualDepto ? 'selected' : '';
+            return `<option value="${dep.id}" ${isSelected}>${dep.nombre}</option>`;
+        }).join('');
+    };
+
+    selGerencia.addEventListener('change', filtrar);
+    filtrar();
 }
 
 
