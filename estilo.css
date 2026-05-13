@@ -1149,3 +1149,9 @@ canvas {
     border: 1px solid #ddd;
     min-height: 100px;
 }
+
+
+
+.swal2-container {
+  z-index: 99999 !important;
+}

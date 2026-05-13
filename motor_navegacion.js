@@ -233,7 +233,11 @@ function consultarFechasPersonalizadas() {
     const fin = document.getElementById('fecha-fin').value;
 
     if (!inicio || !fin) {
-        alert("Por favor selecciona ambas fechas.");
+        Swal.fire({
+            icon: 'warning',
+            title: 'Atención',
+            text: 'Por favor selecciona ambas fechas.'
+        });
         return;
     }
     
@@ -643,7 +647,11 @@ async function abrirInterfazRegistro(tipo, data = null) {
             const catalogos = await inicializarCatalogos();
             
             if (!catalogos) {
-                alert("Error al cargar los catálogos de la base de datos.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al cargar los catálogos de la base de datos.'
+                });
                 return;
             }
 
@@ -901,6 +909,16 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
     const btnGuardar = e.target.querySelector('.btn-guardar-maestro');
     if (btnGuardar && btnGuardar.style.display === 'none') return;
 
+    // Mostrar indicador de carga inicial
+    Swal.fire({
+        title: 'Procesando...',
+        text: 'Guardando los cambios en el sistema',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
     const formData = new FormData(e.target);
     const datos = Object.fromEntries(formData);
 
@@ -917,7 +935,6 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
         });
 
         if (respuesta.ok) {
-
             // --- NUEVA LÓGICA: Borrado de imágenes marcadas ---
             if (idsParaEliminar.length > 0) {
                 for (const idImg of idsParaEliminar) {
@@ -925,24 +942,40 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
                 }
                 idsParaEliminar = []; // Limpiamos la lista tras el éxito
             }
+
             // 2. Si hay archivos nuevos en el array global, los subimos usando tu función probada
             if (typeof archivosTemporales !== 'undefined' && archivosTemporales.length > 0) {
                 // Pasamos idLimpio y los datos del formulario para los metadatos (marca, serial)
                 await manejarSubidaImagen(idLimpio, datos);
             } else {
                 // Si no había fotos nuevas, solo damos éxito y cerramos
-                alert("Equipo actualizado con éxito");
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: 'Se actualizó correctamente',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
                 overlay.remove();
                 const contenedorApp = document.getElementById('contenedor-dinamico') || document.getElementById('contenedor-principal');
                 if (typeof cargarInventario === 'function') await cargarInventario(contenedorApp);
             }
         } else {
             const errorData = await respuesta.json();
-            alert("Error: " + (errorData.message || "Error en servidor"));
+            Swal.fire({
+                icon: 'error',
+                title: 'Error en el servidor',
+                text: errorData.message || "No se pudo completar la operación"
+            });
         }
     } catch (error) {
         console.error("Error crítico:", error);
-        alert("Error de conexión");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: 'No se pudo establecer comunicación con el servidor'
+        });
     }
 };
 
@@ -1064,13 +1097,24 @@ async function cargarAdjuntosVisor(idEquipo) {
 }
 async function manejarSubidaImagen(idEquipo, datosEquipo) {
     if (!idEquipo) {
-        alert("ID de equipo no definido.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'ID de equipo no definido.'
+        });
         return;
     }
 
     // CAMBIO CLAVE: Ahora validamos contra nuestro array global, no contra el input
     if (!archivosTemporales || archivosTemporales.length === 0) {
-        return alert("Por favor, seleccione al menos una imagen o PDF.");
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Atención',
+            text: 'Por favor, seleccione al menos una imagen o PDF.',
+            customClass: {
+                container: 'mi-swal-container'
+            }
+        });
     }
 
     let errores = 0;
@@ -1103,10 +1147,18 @@ async function manejarSubidaImagen(idEquipo, datosEquipo) {
 
     // Feedback al usuario según el resultado
     if (errores === 0) {
-        alert("Todos los archivos se subieron con éxito");
+        Swal.fire({
+            icon: 'success',
+            title: '¡Éxito!',
+            text: 'Todos los archivos se subieron con éxito'
+        });
         archivosTemporales = []; // IMPORTANTE: Limpiar el array global tras el éxito
     } else {
-        alert(`Se completó la subida, pero hubo ${errores} error(es).`);
+        Swal.fire({
+            icon: 'warning',
+            title: 'Subida incompleta',
+            text: `Se completó la subida, pero hubo ${errores} error(es).`
+        });
     }
 
     // Limpieza de interfaz y actualización de la tabla
@@ -1330,11 +1382,19 @@ function confirmarEliminar(id) {
         })
         .then(response => {
             if (response.ok) {
-                alert("Registro eliminado correctamente.");
-                // Recargar la tabla o remover la fila
-                location.reload(); 
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Eliminado',
+                    text: 'Registro eliminado correctamente.'
+                }).then(() => {
+                    location.reload();
+                });
             } else {
-                alert("Error al eliminar el registro.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al eliminar el registro.'
+                });
             }
         })
         .catch(error => console.error('Error:', error));
@@ -1441,13 +1501,21 @@ function activarEscuchaFormulario() {
             });
 
             if (respuesta.ok) {
-                alert("✅ Equipo registrado exitosamente en Visco_BD");
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Equipo registrado!',
+                    text: 'Equipo registrado exitosamente'
+                });
                 form.reset();
                 // Opcional: Redirigir al inventario para ver el cambio
                 // cambiarSeccion('inventario', document.querySelector('[onclick*="inventario"]'));
             } else {
                 const err = await respuesta.json();
-                alert("❌ Error: " + err.error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error: ' + err.error
+                });
             }
         } catch (error) {
             console.error("Error en la petición:", error);
@@ -1486,20 +1554,36 @@ document.addEventListener('submit', async (e) => {
             const resultado = await respuesta.json();
 
             if (respuesta.ok) {
-                alert("✅ " + resultado.mensaje);
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: resultado.mensaje
+                });
                 e.target.reset(); // Limpia el formulario
             } else {
-                alert("❌ Error: " + resultado.error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error: ' + resultado.error
+                });
             }
         } catch (error) {
             console.error("Error en la petición:", error);
-            alert("❌ No se pudo conectar con el servidor");
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo conectar con el servidor'
+            });
         }
     }
 });
 
 function generarPDF() {
-    alert("Iniciando exportación de reporte detallado...");
+    Swal.fire({
+        icon: 'info',
+        title: 'Exportación',
+        text: 'Iniciando exportación de reporte detallado...'
+    });
 }
 
 // ... (Tus funciones cambiarSeccion, cargarInventario, etc.) ...
@@ -1591,7 +1675,11 @@ async function abrirModal() {
         });
     } catch (e) {
         console.error("Error al cargar gerencias:", e);
-        alert("No se pudieron cargar las gerencias.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudieron cargar las gerencias.'
+        });
     }
 }
 
@@ -1634,7 +1722,11 @@ function ejecutarGeneracionPDF() {
     const selG = document.getElementById('pdf-gerencia');
     const selD = document.getElementById('pdf-depto');
     
-    if(!selG.value || !selD.value) return alert("Seleccione ambos campos");
+    if(!selG.value || !selD.value) return Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione ambos campos'
+    });
     
     const nomG = selG.options[selG.selectedIndex].text.toUpperCase();
     const nomD = selD.options[selD.selectedIndex].text.toUpperCase();

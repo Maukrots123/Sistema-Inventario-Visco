@@ -18,7 +18,11 @@ document.querySelector('.formulario-acceso').addEventListener('submit', async (e
         if (response.ok) {
             window.location.href = 'index.html'; // O la página principal del sistema
         } else {
-            alert(data || "Error al iniciar sesión");
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data || 'Error al iniciar sesión'
+            });
         }
     } catch (error) {
         console.error("Error:", error);
