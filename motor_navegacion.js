@@ -1005,28 +1005,26 @@ async function cargarAdjuntosVisor(idEquipo) {
         contenedor.innerHTML = '<p class="error">Error de conexión al cargar archivos.</p>';
     }
 }
-
 async function manejarSubidaImagen(idEquipo, datosEquipo) {
     if (!idEquipo) {
         alert("ID de equipo no definido.");
         return;
     }
 
-    const input = document.getElementById('input-archivo');
-    // Verificamos que haya al menos un archivo
-    if (!input || input.files.length === 0) return alert("Por favor, seleccione al menos una imagen.");
+    // CAMBIO CLAVE: Ahora validamos contra nuestro array global, no contra el input
+    if (!archivosTemporales || archivosTemporales.length === 0) {
+        return alert("Por favor, seleccione al menos una imagen o PDF.");
+    }
 
-    // Variable para rastrear si todas las subidas fueron exitosas
     let errores = 0;
 
-    // BUCLE PARA MÚLTIPLES ARCHIVOS
-    for (let i = 0; i < input.files.length; i++) {
-        const archivo = input.files[i];
+    // BUCLE ACTUALIZADO: Iteramos sobre el array de archivos acumulados
+    for (const archivo of archivosTemporales) {
         const formData = new FormData();
         
-        // IMPORTANTE: Añadimos la marca que faltaba
+        // Enviamos metadatos necesarios para el nombre del archivo en el servidor
         formData.append('orden_compra', datosEquipo?.orden_compra || 'OC');
-        formData.append('marca', datosEquipo?.marca || 'Marca'); // ESTA LÍNEA FALTABA
+        formData.append('marca', datosEquipo?.marca || 'Marca');
         formData.append('serial', datosEquipo?.serial || 'S-S');
         formData.append('imagen', archivo); 
 
@@ -1036,26 +1034,36 @@ async function manejarSubidaImagen(idEquipo, datosEquipo) {
                 body: formData
             });
 
-            if (!respuesta.ok) errores++;
+            if (!respuesta.ok) {
+                console.error(`Error al subir ${archivo.name}:`, respuesta.statusText);
+                errores++;
+            }
         } catch (error) {
-            console.error("Error en archivo:", archivo.name, error);
+            console.error("Error de conexión en archivo:", archivo.name, error);
             errores++;
         }
     }
 
+    // Feedback al usuario según el resultado
     if (errores === 0) {
         alert("Todos los archivos se subieron con éxito");
+        archivosTemporales = []; // IMPORTANTE: Limpiar el array global tras el éxito
     } else {
-        alert(`Se completó la subida con ${errores} error(es)`);
+        alert(`Se completó la subida, pero hubo ${errores} error(es).`);
     }
 
-    // Limpieza de interfaz
+    // Limpieza de interfaz y actualización de la tabla
     const modal = document.getElementById('modal-emergente');
     if (modal) modal.remove();
     
     const contenedor = document.getElementById('contenedor-dinamico') || document.querySelector('.main-content');
-    if (typeof cargarInventario === 'function') await cargarInventario(contenedor);
+    if (typeof cargarInventario === 'function') {
+        await cargarInventario(contenedor);
+    }
 }
+
+
+let archivosTemporales = []; // Array global para acumular archivos
 
 function activarLogicaArrastre() {
     const zona = document.getElementById('zona-arrastre');
@@ -1065,39 +1073,61 @@ function activarLogicaArrastre() {
     if(!zona) return;
 
     zona.onclick = () => input.click();
-    zona.ondragover = (e) => { e.preventDefault(); zona.classList.add('zona-activa'); };
-    zona.ondragleave = () => zona.classList.remove('zona-activa');
+
+    // Función para manejar la acumulación
+    const agregarArchivos = (nuevosArchivos) => {
+        const arrayNuevos = Array.from(nuevosArchivos);
+        archivosTemporales = [...archivosTemporales, ...arrayNuevos]; // Acumulamos
+        renderizarPreview();
+    };
+
     zona.ondrop = (e) => {
         e.preventDefault();
         zona.classList.remove('zona-activa');
-        input.files = e.dataTransfer.files;
-        mostrarPreview(input.files[0], vista);
+        agregarArchivos(e.dataTransfer.files);
     };
-    input.onchange = () => mostrarPreview(input.files[0], vista);
+
+    input.onchange = () => {
+        agregarArchivos(input.files);
+        input.value = ""; // Limpiamos el input para poder seleccionar el mismo archivo si se desea
+    };
 }
 
-function mostrarPreview(archivo, contenedor) {
-    if (!archivo) return;
+function renderizarPreview() {
+    const vista = document.getElementById('vista-previa');
+    vista.innerHTML = ""; // Limpiamos para volver a dibujar todo el array actualizado
 
-    // Si es un PDF, mostramos un icono decorativo en lugar de intentar leer la imagen
-    if (archivo.type === "application/pdf") {
-        contenedor.innerHTML = `
-            <div class="pdf-preview-item">
-                <i class="fa-solid fa-file-pdf" style="font-size: 3rem; color: #e74c3c;"></i>
-                <p style="margin-top: 10px; font-size: 0.9rem;">${archivo.name}</p>
-            </div>
-        `;
-        return; // Salimos de la función
-    }
+    archivosTemporales.forEach((archivo, index) => {
+        const divPreview = document.createElement('div');
+        divPreview.className = "preview-item-mini";
+        
+        // Botón de eliminar (X)
+        const btnEliminar = document.createElement('button');
+        btnEliminar.innerHTML = "&times;";
+        btnEliminar.className = "btn-quitar-archivo";
+        btnEliminar.onclick = (e) => {
+            e.stopPropagation(); // Evita que se dispare el click del padre
+            quitarArchivo(index);
+        };
 
-    // Si es imagen, mantenemos tu lógica original con FileReader
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        contenedor.innerHTML = `<img src="${e.target.result}" class="img-preview-fichas">`;
-    };
-    reader.readAsDataURL(archivo);
+        if (archivo.type === "application/pdf") {
+            divPreview.innerHTML = `<div class="pdf-preview-item"><i class="fa-solid fa-file-pdf"></i><span>PDF</span></div>`;
+        } else {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(archivo); // Más rápido que FileReader para previews
+            img.className = "img-preview-fichas";
+            divPreview.appendChild(img);
+        }
+        
+        divPreview.appendChild(btnEliminar);
+        vista.appendChild(divPreview);
+    });
 }
 
+function quitarArchivo(index) {
+    archivosTemporales.splice(index, 1); // Eliminamos del array
+    renderizarPreview(); // Volvemos a dibujar
+}
 
 let todosLosEquipos = []; // Variable global para persistencia de datos
 
