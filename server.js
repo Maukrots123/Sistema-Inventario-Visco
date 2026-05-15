@@ -831,6 +831,27 @@ app.delete('/api/responsables/:id', verificarSesion, async (req, res) => {
 });
 
 
+// Ruta PUT para cambiar el rol de un usuario a administrador
+// Ruta PUT para cambiar el rol de un usuario a administrador mediante su cédula
+app.put('/api/usuarios/ascender/:cedula', verificarSesion, async (req, res) => {
+    try {
+        const { cedula } = req.params;
+        
+        // Ejecutamos la actualización usando la columna 'cedula' como filtro
+        const query = "UPDATE usuario SET rol = 'admin' WHERE cedula = $1 RETURNING usuario_nombre";
+        const resultado = await pool.query(query, [cedula]);
+
+        if (resultado.rowCount === 0) {
+            return res.status(404).send("Usuario no encontrado.");
+        }
+
+        res.status(200).send(`Usuario ${resultado.rows[0].usuario_nombre} ascendido a admin con éxito.`);
+    } catch (err) {
+        console.error("Error en servidor al ascender usuario:", err.message);
+        res.status(500).send("Error interno al modificar los privilegios del usuario.");
+    }
+});
+
 // Iniciar servidor en el puerto 3000
 const PORT = 3000;
 app.listen(PORT, () => {

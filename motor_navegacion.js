@@ -1877,7 +1877,6 @@ function confirmarEliminacion(id) {
     }
 }
 function cargarInterfazConfig(contenedor) {
-    // Flexbox vertical para mantener los botones alineados abajo si las tarjetas crecen
     const estiloTarjetaFlex = `display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box;`;
     const estiloBotonAlineado = `margin-top: auto; align-self: flex-start; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; color: white;`;
 
@@ -1911,6 +1910,15 @@ function cargarInterfazConfig(contenedor) {
         </div>
         <div class="card-config" style="${estiloTarjetaFlex}">
             <div>
+                <h4>Otorgar Privilegios de Administrador</h4>
+                <p>Ascender a un usuario del sistema para concederle acceso total de gestión y configuración.</p>
+            </div>
+            <button class="btn-secundario" onclick="abrirModalAscenderUsuario()" style="background: #f39c12; ${estiloBotonAlineado}">
+                <i class="fa-solid fa-user-shield"></i> Ascender Usuario
+            </button>
+        </div>
+        <div class="card-config" style="${estiloTarjetaFlex}">
+            <div>
                 <h4>Gestión de Usuarios</h4>
                 <p>Visualizar y eliminar accesos de usuarios existentes.</p>
             </div>
@@ -1929,6 +1937,87 @@ function cargarInterfazConfig(contenedor) {
         </div>
     `;
 }
+
+async function abrirModalAscenderUsuario() {
+    try {
+        // PASO 1: Obtener la lista de usuarios desde tu API real
+        const respuesta = await fetch('/api/usuarios');
+        if (!respuesta.ok) throw new Error('No se pudo obtener el listado de usuarios.');
+        const usuarios = await respuesta.json();
+
+        if (!usuarios || usuarios.length === 0) {
+            return Swal.fire('Sin usuarios', 'No hay usuarios registrados en el sistema.', 'info');
+        }
+
+        // PASO 2: Construir el HTML usando 'cedula' y 'usuario_nombre'
+        let opcionesUsuariosHTML = usuarios.map(u => {
+            // Omitimos visualmente a los que ya son administradores
+            if (u.rol === 'admin') return '';
+
+            // Usamos 'cedula' como value para identificar la fila, y 'usuario_nombre' para mostrarlo
+            return `<option value="${u.cedula}">${u.usuario_nombre} (C.I: ${u.cedula})</option>`;
+        }).join('');
+
+        // Validamos si quedó algún operador disponible en la lista tras el filtro de rol
+        if (opcionesUsuariosHTML.trim() === '') {
+            return Swal.fire('Sin candidatos', 'Todos los usuarios registrados ya poseen el rol de Administrador.', 'info');
+        }
+
+        // PASO 3: Mostrar el modal con SweetAlert2
+        const { value: cedulaUsuario } = await Swal.fire({
+            title: `<i class="fa-solid fa-user-shield" style="color: #f39c12;"></i> Ascender a Administrador`,
+            html: `
+                <div style="text-align: left; font-size: 0.95rem; color: #2c3e50;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 8px;">Seleccione el usuario que recibirá privilegios avanzados:</label>
+                    <select id="swal-select-ascender" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;">
+                        <option value="">-- Seleccione un usuario --</option>
+                        ${opcionesUsuariosHTML}
+                    </select>
+                    <p style="margin-top: 12px; font-size: 0.8rem; color: #7f8c8d;">
+                        Nota: Esta acción le otorgará al usuario acceso completo a los módulos de configuración, registros corporativos y gestión del sistema Visco.
+                    </p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#f39c12',
+            confirmButtonText: 'Otorgar Permisos',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const cedula = document.getElementById('swal-select-ascender').value;
+                if (!cedula) {
+                    Swal.showValidationMessage('Debe seleccionar un usuario válido de la lista');
+                    return false;
+                }
+                return cedula;
+            }
+        });
+
+        if (!cedulaUsuario) return;
+
+        // PASO 4: Envío de la cédula al backend (Cambiamos el parámetro a cedula)
+        const respuestaUpdate = await fetch(`/api/usuarios/ascender/${cedulaUsuario}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (respuestaUpdate.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Ascenso Completado',
+                text: 'El usuario ahora cuenta con privilegios de Administrador de manera inmediata.',
+                confirmButtonColor: '#3498db'
+            });
+        } else {
+            const errorTexto = await respuestaUpdate.text();
+            throw new Error(errorTexto || 'El servidor denegó la actualización de rango.');
+        }
+
+    } catch (error) {
+        console.error("Error al ascender usuario:", error);
+        Swal.fire('Error de operación', error.message || 'No se pudo procesar el cambio de rol.', 'error');
+    }
+}
+
 
 async function abrirModalEliminarCatalogos() {
     try {
