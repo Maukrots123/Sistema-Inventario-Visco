@@ -729,6 +729,58 @@ app.post('/api/logout', (req, res) => {
     }
 });
 
+// PUT para modificar Clases
+app.put('/api/clases/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre } = req.body;
+        await pool.query('UPDATE clase_equipo SET nombre = $1 WHERE id = $2', [nombre, id]);
+        res.status(200).send("Clase actualizada");
+    } catch (err) {
+        res.status(500).send("Error en servidor");
+    }
+});
+
+// PUT para modificar Gerencias
+app.put('/api/gerencias/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre } = req.body;
+        await pool.query('UPDATE gerencia SET nombre = $1 WHERE id = $2', [nombre, id]);
+        res.status(200).send("Gerencia actualizada");
+    } catch (err) {
+        res.status(500).send("Error en servidor");
+    }
+});
+
+// PUT para modificar Departamentos
+app.put('/api/departamentos/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre } = req.body;
+        await pool.query('UPDATE departamento SET nombre = $1 WHERE id = $2', [nombre, id]);
+        res.status(200).send("Departamento actualizado");
+    } catch (err) {
+        res.status(500).send("Error en servidor");
+    }
+});
+
+app.put('/api/responsables/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { cedula, nombre, apellido, id_departamento } = req.body;
+        
+        await pool.query(
+            'UPDATE responsable SET cedula = $1, nombre = $2, apellido = $3, id_departamento = $4 WHERE id = $5', 
+            [cedula, nombre, apellido, id_departamento, id]
+        );
+        res.status(200).send("Responsable actualizado correctamente");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
 
 // Iniciar servidor en el puerto 3000
 const PORT = 3000;

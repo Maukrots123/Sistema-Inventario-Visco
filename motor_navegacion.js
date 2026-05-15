@@ -1680,6 +1680,195 @@ window.onload = () => {
     }
 };
 
+// Definimos la variable global fuera de la función para evitar problemas de ámbito con SweetAlert2
+window._cacheResponsables = [];
+
+async function abrirModalEditarCatalogos() {
+    try {
+        // PASO 1: Selección del catálogo a editar
+        const { value: catalogo } = await Swal.fire({
+            title: 'Mantenimiento de Catálogos',
+            text: 'Seleccione el catálogo que desea modificar:',
+            input: 'select',
+            inputOptions: {
+                'clases': 'Clases de Equipos',
+                'responsables': 'Responsables',
+                'gerencias': 'Gerencias',
+                'departamentos': 'Departamentos'
+            },
+            inputPlaceholder: 'Seleccione una opción...',
+            showCancelButton: true,
+            confirmButtonColor: '#3498db',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!catalogo) return;
+
+        // PASO 2: Obtener los datos del catálogo seleccionado
+        const respuesta = await fetch(`/api/${catalogo}`);
+        if (!respuesta.ok) throw new Error('No se pudieron obtener los datos del catálogo.');
+        const registros = await respuesta.json();
+
+        if (registros.length === 0) {
+            return Swal.fire('Catálogo Vacío', 'No hay registros guardados en esta sección para editar.', 'info');
+        }
+
+        // Si es responsables, guardamos en la variable global segura y traemos departamentos
+        let departamentos = [];
+        if (catalogo === 'responsables') {
+            window._cacheResponsables = registros; // Guardado seguro
+            const resDep = await fetch('/api/departamentos');
+            if (resDep.ok) departamentos = await resDep.json();
+        }
+
+        // PASO 3: Construir el selector del registro actual
+        let opcionesItemsHTML = registros.map(item => {
+            const nombreMostrar = catalogo === 'responsables' ? `${item.cedula} - ${item.nombre} ${item.apellido}` : item.nombre;
+            return `<option value="${item.id}">${nombreMostrar}</option>`;
+        }).join('');
+
+        // PASO 4: Definir contenido HTML dinámico
+        let htmlFormulario = '';
+        
+        if (catalogo === 'responsables') {
+            let opcionesDepHTML = departamentos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join('');
+            
+            htmlFormulario = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; font-size: 0.9rem; color: #2c3e50;">
+                    <div style="grid-column: span 2;">
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Seleccione el Responsable Actual:</label>
+                        <select id="swal-select-item" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" 
+                            onchange="
+                                const res = window._cacheResponsables.find(r => r.id == this.value);
+                                if(res) {
+                                    document.getElementById('swal-resp-cedula').value = res.cedula || '';
+                                    document.getElementById('swal-resp-nombre').value = res.nombre || '';
+                                    document.getElementById('swal-resp-apellido').value = res.apellido || '';
+                                    document.getElementById('swal-resp-dep').value = res.id_departamento || '';
+                                }
+                            ">
+                            <option value="">-- Seleccione un Responsable --</option>
+                            ${opcionesItemsHTML}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">Cédula:</label>
+                        <input id="swal-resp-cedula" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="V-00000000">
+                    </div>
+                    <div>
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">Departamento:</label>
+                        <select id="swal-resp-dep" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;">
+                            <option value="">Seleccione Departamento...</option>
+                            ${opcionesDepHTML}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Nombre:</label>
+                        <input id="swal-resp-nombre" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Nombre">
+                    </div>
+                    <div>
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Apellido:</label>
+                        <input id="swal-resp-apellido" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Apellido">
+                    </div>
+                </div>
+            `;
+        } else {
+            htmlFormulario = `
+                <div style="display: flex; flex-direction: column; gap: 15px; text-align: left; font-size: 0.9rem; color: #2c3e50;">
+                    <div>
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Seleccione el registro actual:</label>
+                        <select id="swal-select-item" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" 
+                            onchange="document.getElementById('swal-input-nuevo-nombre').value = this.options[this.selectedIndex].text">
+                            <option value="">-- Elija uno --</option>
+                            ${opcionesItemsHTML}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Nuevo Nombre / Descripción:</label>
+                        <input id="swal-input-nuevo-nombre" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Escriba la actualización">
+                    </div>
+                </div>
+            `;
+        }
+
+        // PASO 5: Desplegar el Modal
+        const { value: formValues } = await Swal.fire({
+            title: `<i class="fa-solid fa-pen-to-square"></i> Modificar Catálogo`,
+            html: htmlFormulario,
+            width: '550px',
+            showCancelButton: true,
+            confirmButtonColor: '#2ecc71',
+            confirmButtonText: 'Guardar Cambios',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const idSeleccionado = document.getElementById('swal-select-item').value;
+                if (!idSeleccionado) {
+                    Swal.showValidationMessage('Debe seleccionar un registro base para modificar');
+                    return false;
+                }
+
+                if (catalogo === 'responsables') {
+                    const cedula = document.getElementById('swal-resp-cedula').value.trim();
+                    const nombre = document.getElementById('swal-resp-nombre').value.trim();
+                    const apellido = document.getElementById('swal-resp-apellido').value.trim();
+                    const id_departamento = document.getElementById('swal-resp-dep').value;
+
+                    if (!cedula && !nombre && !apellido && !id_departamento) {
+                        Swal.showValidationMessage('Debe rellenar al menos un campo para actualizar');
+                        return false;
+                    }
+
+                    // Obtenemos el registro antes de ser editado desde nuestra caché segura
+                    const original = window._cacheResponsables.find(r => r.id == idSeleccionado);
+
+                    // Fusionamos: Si el campo quedó vacío o no se tocó, mantiene el valor original de la BD
+                    return {
+                        id: idSeleccionado,
+                        payload: {
+                            cedula: cedula || original.cedula,
+                            nombre: nombre || original.nombre,
+                            apellido: apellido || original.apellido,
+                            id_departamento: id_departamento ? parseInt(id_departamento) : original.id_departamento
+                        }
+                    };
+                } else {
+                    const nuevoNombre = document.getElementById('swal-input-nuevo-nombre').value.trim();
+                    if (!nuevoNombre) {
+                        Swal.showValidationMessage('El campo no puede estar vacío');
+                        return false;
+                    }
+                    return { id: idSeleccionado, payload: { nombre: nuevoNombre } };
+                }
+            }
+        });
+
+        // PASO 6: Enviar actualización al servidor
+        if (formValues) {
+            const respuestaUpdate = await fetch(`/api/${catalogo}/${formValues.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formValues.payload)
+            });
+
+            if (respuestaUpdate.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Registro Actualizado',
+                    text: 'Los datos han sido actualizados exitosamente.',
+                    confirmButtonColor: '#3498db'
+                });
+            } else {
+                throw new Error('El servidor rechazó la solicitud de actualización.');
+            }
+        }
+
+    } catch (error) {
+        console.error("Error en mantenimiento de catálogos:", error);
+        Swal.fire('Error de operación', error.message || 'No se pudo completar la solicitud.', 'error');
+    }
+}
+
 function confirmarEliminacion(id) {
     const confirmacion = confirm(`¿Está seguro de que desea dar de baja el equipo con FMO: ${id}? Esta acción quedará registrada en la auditoría.`);
     if (confirmacion) {
@@ -1688,14 +1877,12 @@ function confirmarEliminacion(id) {
     }
 }
 
-
 function cargarInterfazConfig(contenedor) {
-    // Construimos todas las tarjetas directamente sin validar el rol
     let htmlCards = `
         <div class="card-config">
             <h4>Mantenimiento de Catálogos</h4>
-            <p>Administrar clases, gerencias y departamentos.</p>
-            <button class="btn-secundario" style="background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+            <p>Administrar responsables, clases, gerencias y departamentos.</p>
+            <button class="btn-secundario" onclick="abrirModalEditarCatalogos()" style="background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
                 <i class="fa-solid fa-folder-open"></i> Editar Catálogos
             </button>
         </div>
@@ -1715,7 +1902,6 @@ function cargarInterfazConfig(contenedor) {
         </div>
     `;
 
-    // Renderizamos la estructura final en el área de trabajo
     contenedor.innerHTML = `
         <div class="animacion-seccion seccion-config">
             <h3><i class="fa-solid fa-gear"></i> Configuración del Sistema</h3>
