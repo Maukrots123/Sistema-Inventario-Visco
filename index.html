@@ -7,40 +7,42 @@
     <link rel="stylesheet" href="estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
-        window.usuarioRol = 'usuario';
-        window.usuarioNombre = 'Usuario';
+    window.usuarioRol = 'usuario';
+    window.usuarioNombre = 'Usuario';
 
-        // Este código se ejecuta SIEMPRE al cargar la página
-        fetch('/api/verificar-sesion')
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('No autorizado');
-                }
-                return res.json();
-            })
-            .then(data => {
-                window.usuarioRol = data.rol || 'usuario';
-                window.usuarioNombre = data.username || 'Usuario';
+    // Realizamos la petición al backend de Visco
+    fetch('/api/verificar-sesion')
+        .then(res => {
+            if (!res.ok) throw new Error('No autorizado');
+            return res.json();
+        })
+        .then(data => {
+            // Nota: Cambiado data.username a data.usuario_nombre para coincidir con tu tabla de PostgreSQL
+            window.usuarioRol = data.rol || 'usuario';
+            window.usuarioNombre = data.usuario_nombre || data.username || 'Usuario';
 
-                const avatar = window.usuarioNombre
-                    .split(/[^a-zA-Z0-9]+/)
-                    .filter(Boolean)
-                    .map(part => part[0].toUpperCase())
-                    .slice(0, 2)
-                    .join('') || 'US';
+            // Procesar las iniciales del Avatar
+            const avatar = window.usuarioNombre
+                .split(/[^a-zA-Z0-9]+/)
+                .filter(Boolean)
+                .map(part => part[0].toUpperCase())
+                .slice(0, 2)
+                .join('') || 'US';
 
-                document.addEventListener('DOMContentLoaded', () => {
-                    const avatarEl = document.getElementById('avatar-perfil');
-                    const nombreEl = document.getElementById('perfil-usuario');
-                    const rolEl = document.getElementById('perfil-rol');
+            // ASIGNACIÓN DIRECTA: Modificamos el DOM inmediatamente al recibir la respuesta
+            const avatarEl = document.getElementById('avatar-perfil');
+            const nombreEl = document.getElementById('perfil-usuario');
+            const rolEl = document.getElementById('perfil-rol');
 
-                    if (avatarEl) avatarEl.innerText = avatar;
-                    if (nombreEl) nombreEl.innerText = window.usuarioNombre;
-                    if (rolEl) rolEl.innerText = window.usuarioRol;
-                });
-            })
-            .catch(() => window.location.href = 'login.html');
-    </script>
+            if (avatarEl) avatarEl.innerText = avatar;
+            if (nombreEl) nombreEl.innerText = window.usuarioNombre;
+            if (rolEl) rolEl.innerText = window.usuarioRol;
+        })
+        .catch(err => {
+            console.error("Sesión inválida:", err);
+            window.location.href = 'login.html';
+        });
+</script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>

@@ -1730,6 +1730,46 @@ async function abrirModal() {
     }
 }
 
+function actualizarDepartamentosEnEditModal(catalogos, equipo) {
+    const selGerencia = document.getElementById('select-gerencia');
+    const selDepto = document.getElementById('select-departamento');
+
+    if (!selGerencia || !selDepto) return;
+
+    // Función interna para renderizar solo los departamentos de la gerencia seleccionada
+    const filtrarYRenderizar = (gerenciaId, deptoIdActual = null) => {
+        selDepto.innerHTML = '<option value="">Seleccione Departamento...</option>';
+        
+        if (!gerenciaId) return;
+
+        // Filtrar usando la relación id_gerencia del catálogo
+        const filtrados = catalogos.departamentos.filter(d => 
+            String(d.id_gerencia) === String(gerenciaId)
+        );
+
+        if (filtrados.length > 0) {
+            filtrados.forEach(d => {
+                // Comprobar si coincide con el departamento que ya tenía asignado el equipo
+                const isSelected = String(d.id) === String(deptoIdActual) ? 'selected' : '';
+                selDepto.innerHTML += `<option value="${d.id}" ${isSelected}>${d.nombre}</option>`;
+            });
+        } else {
+            selDepto.innerHTML = '<option value="">No hay departamentos asociados</option>';
+        }
+    };
+
+    // 1. FILTRADO INICIAL: Cargar los departamentos correspondientes a la gerencia que ya tiene el equipo
+    const gerenciaInicial = selGerencia.value || equipo.gerencia;
+    if (gerenciaInicial) {
+        filtrarYRenderizar(gerenciaInicial, equipo.departamento);
+    }
+
+    // 2. ESCUCHAR CAMBIOS: Filtrar reactivamente cuando el usuario cambie la gerencia en el modal
+    selGerencia.addEventListener('change', (e) => {
+        filtrarYRenderizar(e.target.value);
+    });
+}
+
 // 2. Filtrar departamentos al cambiar gerencia
 async function actualizarDeptosModal() {
     const gerenciaId = document.getElementById('pdf-gerencia').value;
