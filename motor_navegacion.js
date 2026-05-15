@@ -46,7 +46,28 @@ async function cambiarSeccion(nombreSeccion, elemento) {
 
         case 'config':
             titulo.innerText = "Configuración";
-            cargarInterfazConfig(contenedor);
+            
+            // FILTRO DE SEGURIDAD: Validamos si el rol activo es administrador
+            if (String(window.usuarioRol).toLowerCase() === 'admin') {
+                cargarInterfazConfig(contenedor);
+            } else {
+                // Si no es admin, bloqueamos la vista e informamos al usuario
+                Swal.fire({
+                    icon: 'export',
+                    icon_color: '#e74c3c',
+                    title: 'Acceso Restringido',
+                    text: 'Esta sección está reservada exclusivamente para el administrador del sistema.',
+                    confirmButtonColor: '#3498db'
+                });
+
+                contenedor.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #7f8c8d;">
+                        <i class="fa-solid fa-lock" style="font-size: 4rem; color: #e74c3c; margin-bottom: 15px;"></i>
+                        <h3 style="color: #2c3e50;">No tienes permisos para ver esto</h3>
+                        <p>Por favor, contacta al administrador.</p>
+                    </div>
+                `;
+            }
             break;
 
         case 'cerrar_sesion':
@@ -102,23 +123,27 @@ function cargarInterfazPanel(contenedor) {
                     <button onclick="document.querySelector('[onclick*=\\'registro\\']').click()" class="btn-dash-action success">
                         <i class="fa-solid fa-plus"></i> Registrar Nuevo Equipo
                     </button>
-                    <button onclick="abrirInterfazRegistro('clase')" class="btn-dash-action alt">
+                    
+                    <button onclick="String(window.usuarioRol).toLowerCase() === 'admin' ? abrirInterfazRegistro('clase') : Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permisos para registrar clases.', confirmButtonColor: '#e74c3c' })" class="btn-dash-action alt">
                         <i class="fa-solid fa-layer-group"></i> Nueva Clase
                     </button>
-                    <button onclick="abrirInterfazRegistro('responsable')" class="btn-dash-action alt">
+                    
+                    <button onclick="String(window.usuarioRol).toLowerCase() === 'admin' ? abrirInterfazRegistro('responsable') : Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permisos para registrar responsables.', confirmButtonColor: '#e74c3c' })" class="btn-dash-action alt">
                         <i class="fa-solid fa-user-plus"></i> Nuevo Responsable
                     </button>
-                    <button onclick="abrirInterfazRegistro('gerencia')" class="btn-dash-action alt">
+                    
+                    <button onclick="String(window.usuarioRol).toLowerCase() === 'admin' ? abrirInterfazRegistro('gerencia') : Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permisos para registrar gerencias.', confirmButtonColor: '#e74c3c' })" class="btn-dash-action alt">
                         <i class="fa-solid fa-sitemap"></i> Nueva Gerencia
                     </button>
-                    <button onclick="abrirInterfazRegistro('departamento')" class="btn-dash-action alt">
+                    
+                    <button onclick="String(window.usuarioRol).toLowerCase() === 'admin' ? abrirInterfazRegistro('departamento') : Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permisos para registrar departamentos.', confirmButtonColor: '#e74c3c' })" class="btn-dash-action alt">
                         <i class="fa-solid fa-sitemap"></i> Nuevo Departamento
                     </button>
-                    <button onclick="generarReportePDF()" class="btn-dash-action info">
-                        <i class="fa-solid fa-file-pdf"></i> Generar Reporte PDF
-                    </button>
+                    
+                    
                 </div>
             </div>
+            
 
             <div class="audit-section">
                 <div class="audit-header">
