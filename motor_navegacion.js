@@ -1876,27 +1876,45 @@ function confirmarEliminacion(id) {
         // Aquí llamarías a tu API: ejecutarEliminacion(id);
     }
 }
-
 function cargarInterfazConfig(contenedor) {
+    // Flexbox vertical para mantener los botones alineados abajo si las tarjetas crecen
+    const estiloTarjetaFlex = `display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box;`;
+    const estiloBotonAlineado = `margin-top: auto; align-self: flex-start; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; color: white;`;
+
     let htmlCards = `
-        <div class="card-config">
-            <h4>Mantenimiento de Catálogos</h4>
-            <p>Administrar responsables, clases, gerencias y departamentos.</p>
-            <button class="btn-secundario" onclick="abrirModalEditarCatalogos()" style="background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+        <div class="card-config" style="${estiloTarjetaFlex}">
+            <div>
+                <h4>Mantenimiento de Catálogos</h4>
+                <p>Administrar responsables, clases, gerencias y departamentos.</p>
+            </div>
+            <button class="btn-secundario" onclick="abrirModalEditarCatalogos()" style="background: #3498db; ${estiloBotonAlineado}">
                 <i class="fa-solid fa-folder-open"></i> Editar Catálogos
             </button>
         </div>
-        <div class="card-config">
-            <h4>Registro de Usuarios</h4>
-            <p>Añadir nuevos usuarios al sistema.</p>
-            <button class="btn-secundario" onclick="abrirInterfazRegistro('registrar_usuario')" style="background: #2ecc71; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+        <div class="card-config" style="${estiloTarjetaFlex}">
+            <div>
+                <h4>Eliminar Registros de Catálogo</h4>
+                <p>Remover permanentemente clases, responsables, gerencias o departamentos.</p>
+            </div>
+            <button class="btn-danger-config" onclick="abrirModalEliminarCatalogos()" style="background: #e74c3c; ${estiloBotonAlineado}">
+                <i class="fa-solid fa-trash-can"></i> Eliminar Catálogos
+            </button>
+        </div>
+        <div class="card-config" style="${estiloTarjetaFlex}">
+            <div>
+                <h4>Registro de Usuarios</h4>
+                <p>Añadir nuevos usuarios al sistema.</p>
+            </div>
+            <button class="btn-secundario" onclick="abrirInterfazRegistro('registrar_usuario')" style="background: #2ecc71; ${estiloBotonAlineado}">
                 <i class="fa-solid fa-user-plus"></i> Registrar Usuario
             </button>
         </div>
-        <div class="card-config">
-            <h4>Gestión de Usuarios</h4>
-            <p>Visualizar y eliminar accesos de usuarios existentes.</p>
-            <button class="btn-danger-config" onclick="abrirModalEliminarUsuarios()" style="background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+        <div class="card-config" style="${estiloTarjetaFlex}">
+            <div>
+                <h4>Gestión de Usuarios</h4>
+                <p>Visualizar y eliminar accesos de usuarios existentes.</p>
+            </div>
+            <button class="btn-danger-config" onclick="abrirModalEliminarUsuarios()" style="background: #e74c3c; ${estiloBotonAlineado}">
                 <i class="fa-solid fa-user-minus"></i> Eliminar Usuario
             </button>
         </div>
@@ -1905,11 +1923,126 @@ function cargarInterfazConfig(contenedor) {
     contenedor.innerHTML = `
         <div class="animacion-seccion seccion-config">
             <h3><i class="fa-solid fa-gear"></i> Configuración del Sistema</h3>
-            <div class="grid-config" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+            <div class="grid-config" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
                 ${htmlCards}
             </div>
         </div>
     `;
+}
+
+async function abrirModalEliminarCatalogos() {
+    try {
+        // PASO 1: Selección del catálogo
+        const { value: catalogo } = await Swal.fire({
+            title: 'Eliminar Registros de Catálogo',
+            text: 'Seleccione el catálogo del cual desea remover un elemento:',
+            input: 'select',
+            inputOptions: {
+                'clases': 'Clases de Equipos',
+                'responsables': 'Responsables',
+                'gerencias': 'Gerencias',
+                'departamentos': 'Departamentos'
+            },
+            inputPlaceholder: 'Seleccione una opción...',
+            showCancelButton: true,
+            confirmButtonColor: '#e74c3c',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!catalogo) return;
+
+        // PASO 2: Obtener registros actuales
+        const respuesta = await fetch(`/api/${catalogo}`);
+        if (!respuesta.ok) throw new Error('No se pudieron obtener los datos del catálogo.');
+        const registros = await respuesta.json();
+
+        if (registros.length === 0) {
+            return Swal.fire('Catálogo Vacío', 'No existen registros en esta sección para eliminar.', 'info');
+        }
+
+        // PASO 3: Construir las opciones del listado emparejando los datos
+        let opcionesItemsHTML = registros.map(item => {
+            const nombreMostrar = catalogo === 'responsables' ? `${item.cedula} - ${item.nombre} ${item.apellido}` : item.nombre;
+            return `<option value="${item.id}">${nombreMostrar}</option>`;
+        }).join('');
+
+        // Mensaje de advertencia dinámico si selecciona gerencias
+        const advertenciaGerencia = catalogo === 'gerencias' 
+            ? `<div style="margin-top: 15px; background-color: #fde8e8; color: #9b1c1c; border: 1px solid #f8b4b4; padding: 10px; border-radius: 5px; font-size: 0.85rem;">
+                <i class="fa-solid fa-triangle-exclamation"></i> <strong>¡Atención!</strong> Al eliminar una gerencia, se eliminarán automáticamente todos los departamentos y dependencias asociados a ella por cascada.
+               </div>` 
+            : '';
+
+        // PASO 4: Mostrar modal de confirmación de selección
+        const { value: idEliminar } = await Swal.fire({
+            title: `<i class="fa-solid fa-trash-can" style="color: #e74c3c;"></i> Remover Elemento`,
+            html: `
+                <div style="text-align: left; font-size: 0.95rem; color: #2c3e50;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 8px;">Seleccione el registro que desea eliminar permanentemente:</label>
+                    <select id="swal-select-eliminar" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;">
+                        <option value="">-- Seleccione un elemento --</option>
+                        ${opcionesItemsHTML}
+                    </select>
+                    ${advertenciaGerencia}
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#e74c3c',
+            confirmButtonText: 'Eliminar Registro',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const id = document.getElementById('swal-select-eliminar').value;
+                if (!id) {
+                    Swal.showValidationMessage('Debe seleccionar un elemento de la lista');
+                    return false;
+                }
+                return id;
+            }
+        });
+
+        if (!idEliminar) return;
+
+        // PASO 5: Confirmación final crítica (Doble verificación de seguridad)
+        const confirmacionFinal = await Swal.fire({
+            title: '¿Está completamente seguro?',
+            text: "Esta acción no se puede deshacer y podría afectar el historial de registros de inventario vinculados.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar definitivamente',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacionFinal.isConfirmed) return;
+
+        // PASO 6: Petición DELETE al backend de Visco
+        const respuestaDelete = await fetch(`/api/${catalogo}/${idEliminar}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (respuestaDelete.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Eliminado Exitosamente',
+                text: 'El registro ha sido removido de la base de datos.',
+                confirmButtonColor: '#3498db'
+            });
+        } else {
+            const errorTexto = await respuestaDelete.text();
+            throw new Error(errorTexto || 'El servidor restringió la eliminación del elemento.');
+        }
+
+    } catch (error) {
+        console.error("Error al eliminar catálogo:", error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Restricción de Base de Datos',
+            text: error.message || 'No se pudo procesar la solicitud.',
+            confirmButtonColor: '#e74c3c'
+        });
+    }
 }
 
 async function abrirModalEliminarUsuarios() {

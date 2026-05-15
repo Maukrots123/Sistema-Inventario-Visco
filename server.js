@@ -782,6 +782,55 @@ app.put('/api/responsables/:id', verificarSesion, async (req, res) => {
 });
 
 
+// DELETE para Clases
+app.delete('/api/clases/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM clase_equipo WHERE id = $1', [id]);
+        res.status(200).send("Clase eliminada");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error: El registro está siendo usado por un equipo activo.");
+    }
+});
+
+// DELETE para Gerencias (Efecto cascada automático si configuraste ON DELETE CASCADE en Postgres)
+app.delete('/api/gerencias/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM gerencia WHERE id = $1', [id]);
+        res.status(200).send("Gerencia y departamentos asociados eliminados.");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al intentar remover la gerencia.");
+    }
+});
+
+// DELETE para Departamentos
+app.delete('/api/departamentos/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM departamento WHERE id = $1', [id]);
+        res.status(200).send("Departamento eliminado.");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error: El departamento contiene responsables asignados.");
+    }
+});
+
+// DELETE para Responsables
+app.delete('/api/responsables/:id', verificarSesion, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM responsable WHERE id = $1', [id]);
+        res.status(200).send("Responsable removido.");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error: El responsable tiene equipos asignados a su cargo.");
+    }
+});
+
+
 // Iniciar servidor en el puerto 3000
 const PORT = 3000;
 app.listen(PORT, () => {
