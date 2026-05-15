@@ -43,11 +43,6 @@ async function cambiarSeccion(nombreSeccion, elemento) {
             cargarFormularioRegistro(contenedor);
             await cargarOpcionesFormulario();
             break;
-        case 'actas':
-            titulo.innerText = "Actas de Entrega";
-            contenedor.innerHTML = '<p class="cargando">Cargando actas...</p>';
-            cargarInterfazActas(contenedor);
-            break;
 
         case 'config':
             titulo.innerText = "Configuración";
@@ -1669,40 +1664,127 @@ function confirmarEliminacion(id) {
 }
 
 
-function cargarInterfazActas(contenedor) {
+function cargarInterfazConfig(contenedor) {
+    // Construimos todas las tarjetas directamente sin validar el rol
+    let htmlCards = `
+        <div class="card-config">
+            <h4>Mantenimiento de Catálogos</h4>
+            <p>Administrar clases, gerencias y departamentos.</p>
+            <button class="btn-secundario" style="background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                <i class="fa-solid fa-folder-open"></i> Editar Catálogos
+            </button>
+        </div>
+        <div class="card-config">
+            <h4>Registro de Usuarios</h4>
+            <p>Añadir nuevos usuarios al sistema.</p>
+            <button class="btn-secundario" onclick="abrirInterfazRegistro('registrar_usuario')" style="background: #2ecc71; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                <i class="fa-solid fa-user-plus"></i> Registrar Usuario
+            </button>
+        </div>
+        <div class="card-config">
+            <h4>Gestión de Usuarios</h4>
+            <p>Visualizar y eliminar accesos de usuarios existentes.</p>
+            <button class="btn-danger-config" onclick="abrirModalEliminarUsuarios()" style="background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                <i class="fa-solid fa-user-minus"></i> Eliminar Usuario
+            </button>
+        </div>
+    `;
+
+    // Renderizamos la estructura final en el área de trabajo
     contenedor.innerHTML = `
-        <div class="animacion-seccion seccion-actas">
-            <h3><i class="fa-solid fa-file-contract"></i> Gestión de Actas de Entrega</h3>
-            <p>Generación y seguimiento de actas de equipos asignados.</p>
-            <div class="contenedor-acciones">
-                <button class="btn-secundario" onclick="generarReporteActas()">
-                    <i class="fa-solid fa-print"></i> Generar Acta PDF
-                </button>
+        <div class="animacion-seccion seccion-config">
+            <h3><i class="fa-solid fa-gear"></i> Configuración del Sistema</h3>
+            <div class="grid-config" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                ${htmlCards}
             </div>
-            <div id="lista-actas">
-                </div>
         </div>
     `;
 }
 
-function cargarInterfazConfig(contenedor) {
-    contenedor.innerHTML = `
-        <div class="animacion-seccion seccion-config">
-            <h3><i class="fa-solid fa-gear"></i> Configuración del Sistema</h3>
-            <div class="grid-config">
-                <div class="card-config">
-                    <h4>Mantenimiento de Catálogos</h4>
-                    <p>Administrar clases, gerencias y departamentos.</p>
-                    <button class="btn-secundario">Editar Catálogos</button>
-                </div>
-                <div class="card-config">
-                    <h4>Seguridad</h4>
-                    <p>Gestión de usuarios y niveles de acceso.</p>
-                    <button class="btn-secundario" onclick="abrirInterfazRegistro('registrar_usuario')">Administrar Usuarios</button>
-                </div>
-            </div>
-        </div>
-    `;
+async function abrirModalEliminarUsuarios() {
+    try {
+        // 1. Buscamos la lista de usuarios en el backend
+        const respuesta = await fetch('/api/usuarios');
+        if (!respuesta.ok) throw new Error("No se pudo obtener la lista de usuarios.");
+        const usuarios = await respuesta.json();
+
+        // Filtramos para evitar que el usuario en sesión se elimine a sí mismo por accidente
+        const usuariosFiltrados = usuarios.filter(u => u.usuario_nombre !== window.usuarioNombre);
+
+        if (usuariosFiltrados.length === 0) {
+            return Swal.fire({
+                icon: 'info',
+                title: 'Gestión de Usuarios',
+                text: 'No hay otros usuarios registrados en el sistema para eliminar.'
+            });
+        }
+
+        // 2. Generamos las opciones para el select del SweetAlert
+        let opcionesHTML = `<select id="swal-select-usuario" class="swal2-input" style="width: 80%; font-size: 1rem;">
+            <option value="">Seleccione un usuario...</option>
+            ${usuariosFiltrados.map(u => `<option value="${u.cedula}">${u.usuario_nombre} (${u.rol})</option>`).join('')}
+        </select>`;
+
+        // 3. Mostramos el modal de selección
+        const { value: cedulaSeleccionada } = await Swal.fire({
+            title: 'Eliminar Usuario del Sistema',
+            html: `<p style="margin-bottom: 15px; color: #7f8c8d;">Seleccione el usuario que desea dar de baja permanentemente:</p>${opcionesHTML}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Continuar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const select = document.getElementById('swal-select-usuario');
+                if (!select.value) {
+                    Swal.showValidationMessage('Debe seleccionar un usuario válido');
+                }
+                return select.value;
+            }
+        });
+
+        // 4. Si seleccionó un usuario, pedimos doble confirmación destructiva
+        if (cedulaSeleccionada) {
+            const usuarioObj = usuariosFiltrados.find(u => String(u.cedula) === String(cedulaSeleccionada));
+            
+            const confirmacionFinal = await Swal.fire({
+                title: `¿Está seguro de eliminar a ${usuarioObj.usuario_nombre}?`,
+                text: "Esta acción revocará sus accesos de inmediato y no se puede deshacer.",
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonColor: '#e74c3c',
+                confirmButtonText: 'Sí, eliminar permanentemente',
+                cancelButtonText: 'Regresar'
+            });
+
+            if (confirmacionFinal.isConfirmed) {
+                // 5. Petición DELETE a la API de Visco pasándole la cédula (Primary Key)
+                const resultadoDelete = await fetch(`/api/usuarios/${cedulaSeleccionada}`, {
+                    method: 'DELETE'
+                });
+
+                if (resultadoDelete.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Usuario Eliminado',
+                        text: `El usuario ${usuarioObj.usuario_nombre} fue removido del sistema.`
+                    });
+                } else {
+                    const errData = await resultadoDelete.json();
+                    throw new Error(errData.mensaje || 'Error interno del servidor.');
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error("Error en la gestión de usuarios:", error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de operación',
+            text: error.message || 'No se pudo completar la solicitud.'
+        });
+    }
 }
 
 

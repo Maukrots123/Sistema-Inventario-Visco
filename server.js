@@ -657,6 +657,57 @@ app.delete('/api/imagenes/:id', verificarSesion, async (req, res) => {
 });
 
 
+// ==========================================
+//        APIS DE GESTIÓN DE USUARIOS
+// ==========================================
+
+// 1. OBTENER LISTA DE USUARIOS (Para cargar el selector de eliminación)
+app.get('/api/usuarios', verificarSesion, async (req, res) => {
+    try {
+        // Obtenemos los campos clave. Excluimos la clave/password por seguridad.
+        const query = 'SELECT cedula, usuario_nombre, rol FROM usuario ORDER BY usuario_nombre ASC';
+        const resultado = await pool.query(query);
+        res.json(resultado.rows);
+    } catch (err) {
+        console.error("Error al obtener usuarios:", err.message);
+        res.status(500).json({ mensaje: "Error al consultar la lista de usuarios." });
+    }
+});
+
+// 2. ELIMINAR USUARIO POR CÉDULA
+app.delete('/api/usuarios/:cedula', verificarSesion, async (req, res) => {
+    const { cedula } = req.params;
+
+    try {
+        // Validar que el usuario no intente eliminarse a sí mismo usando su ID en sesión
+        // Primero buscamos el ID asociado a esa cédula
+        const buscarUsuario = await pool.query('SELECT id FROM usuario WHERE cedula = $1', [cedula]);
+        
+        if (buscarUsuario.rows.length === 0) {
+            return res.status(404).json({ mensaje: "El usuario no existe." });
+        }
+
+        if (buscarUsuario.rows[0].id === req.session.usuarioId) {
+            return res.status(400).json({ mensaje: "Operación inválida: No puedes eliminar tu propio usuario en sesión." });
+        }
+
+        // Ejecutar borrado definitivo en PostgreSQL
+        const resultado = await pool.query('DELETE FROM usuario WHERE cedula = $1', [cedula]);
+
+        if (resultado.rowCount === 0) {
+            return res.status(404).json({ mensaje: "Usuario no encontrado." });
+        }
+
+        res.status(200).json({ mensaje: "Usuario eliminado correctamente." });
+    } catch (err) {
+        console.error("Error al eliminar usuario:", err.message);
+        
+        
+        res.status(500).json({ mensaje: "Error interno al procesar la baja del usuario." });
+    }
+});
+
+
 
 app.post('/api/logout', (req, res) => {
     // Verificamos si existe la sesión antes de intentar destruirla
