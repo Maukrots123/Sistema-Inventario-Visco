@@ -42,6 +42,7 @@ async function cambiarSeccion(nombreSeccion, elemento) {
             titulo.innerText = "Registro de Nuevo Equipo";
             cargarFormularioRegistro(contenedor);
             await cargarOpcionesFormulario();
+            setTimeout(() => activarLogicaArrastre('registro-'), 100);
             break;
 
         case 'config':
@@ -171,17 +172,15 @@ function cargarInterfazPanel(contenedor) {
                     <table class="modern-table">
                         <thead>
                             <tr>
-                                <th>FMO</th>
-                                <th>Serial</th>
-                                <th>Clase</th>
-                                <th>Tipo</th>
-                                <th>Estado</th>
-                                <th>Fecha Mov.</th>
-                                <th>Operador / Responsable</th> 
+                                <th>Usuario</th>
+                                <th>Fecha</th>
+                                <th>Operación</th>
+                                <th>Equipo</th>
+                                <th>Detalle del Cambio</th> 
                             </tr>
                         </thead>
                         <tbody id="body-auditoria">
-                            <tr><td colspan="7" class="empty-state">Inicie una consulta de auditoría</td></tr>
+                            <tr><td colspan="5" class="empty-state">Inicie una consulta de auditoría</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -204,29 +203,88 @@ async function obtenerDatosAuditoria(fechaInicio, fechaFin) {
         const response = await fetch(url);
         const data = await response.json();
 
-        tbody.innerHTML = ''; // Limpiar mensaje de carga
+        tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No se encontraron movimientos en este rango.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron movimientos en este rango.</td></tr>';
             return;
         }
 
         data.forEach(item => {
+            const esCatalogo = !item.id_equipo && item.campo_modificado;
+            let eqColumna, detalle = '';
+            let badgeColor = '', textoOp = '';
+
+            if (esCatalogo) {
+                eqColumna = `Catálogo: ${item.campo_modificado}`;
+                switch (item.operacion) {
+                    case 'INSERT':
+                        badgeColor = '#2ecc71'; textoOp = 'Registro';
+                        detalle = `Creado: ${item.valor_nuevo || ''}`;
+                        break;
+                    case 'DELETE':
+                        badgeColor = '#e74c3c'; textoOp = 'Eliminación';
+                        detalle = `Eliminado: ${item.valor_anterior || ''}`;
+                        break;
+                    case 'UPDATE':
+                        badgeColor = '#f39c12'; textoOp = 'Modificación';
+                        detalle = `'${item.valor_anterior || ''}' → '${item.valor_nuevo || ''}'`;
+                        break;
+                    default:
+                        badgeColor = '#95a5a6'; textoOp = item.operacion;
+                        detalle = item.valor_nuevo || '';
+                }
+            } else {
+                const partesEq = [];
+                if (item.clase_equipo) partesEq.push(`<strong>Clase:</strong> ${item.clase_equipo}`);
+                if (item.tipo_equipo) partesEq.push(`<strong>Tipo:</strong> ${item.tipo_equipo}`);
+                if (item.marca_equipo) partesEq.push(`<strong>Marca:</strong> ${item.marca_equipo}`);
+                if (item.modelo_equipo) partesEq.push(`<strong>Modelo:</strong> ${item.modelo_equipo}`);
+                const eqDetail = partesEq.join('<br>');
+
+                switch (item.operacion) {
+                    case 'INSERT':
+                        badgeColor = '#2ecc71'; textoOp = 'Registro';
+                        detalle = `Equipo creado:<br>${eqDetail}`;
+                        break;
+                    case 'DELETE':
+                        badgeColor = '#e74c3c'; textoOp = 'Eliminación';
+                        detalle = `Equipo eliminado:<br>${eqDetail}`;
+                        break;
+                    case 'UPDATE':
+                        badgeColor = '#f39c12'; textoOp = 'Modificación';
+                        if (!item.campo_modificado && item.valor_nuevo) {
+                            detalle = item.valor_nuevo.replace(/\n/g, '<br>');
+                        } else if (item.campo_modificado) {
+                            detalle = `<strong>${item.campo_modificado}</strong>: '${item.valor_anterior}' → '${item.valor_nuevo}'`;
+                        } else {
+                            detalle = `Datos actualizados - ${eqDetail}`;
+                        }
+                        break;
+                    default:
+                        badgeColor = '#95a5a6'; textoOp = item.operacion;
+                        detalle = eqDetail;
+                }
+
+                const partes = [];
+                if (item.fmo) partes.push(`FMO: ${item.fmo}`);
+                if (item.serial_equipo) partes.push(`Serial: ${item.serial_equipo}`);
+                eqColumna = partes.join(' - ');
+            }
+
             tbody.innerHTML += `
                 <tr>
-                    <td>${item.fmo || 'N/A'}</td>
-                    <td>${item.serial}</td>
-                    <td>${item.clase_nombre || 'N/A'}</td>
-                    <td>${item.tipo}</td>
-                    <td>${item.estado}</td>
-                    <td>${new Date(item.fecha_modificacion).toLocaleString()}</td>
-                    <td>${item.responsable_completo || 'N/A'}</td>
+                    <td>${item.nombre_usuario || 'N/A'}</td>
+                    <td>${new Date(item.fecha).toLocaleString()}</td>
+                    <td><span style="display:inline-block; background:${badgeColor}; color:white; padding:3px 12px; border-radius:12px; font-size:0.8rem; font-weight:600;">${textoOp}</span></td>
+                    <td>${eqColumna}</td>
+                    <td>${detalle}</td>
                 </tr>
             `;
         });
     } catch (error) {
         console.error("Error cargando auditoría:", error);
-        tbody.innerHTML = '<tr><td colspan="7" style="color:red" class="empty-state">Error al cargar la auditoría.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="color:red" class="empty-state">Error al cargar la auditoría.</td></tr>';
     }
 }
 
@@ -493,6 +551,23 @@ function cargarFormularioRegistro(contenedor) {
                         </div>
                     </div>
                 </div>
+
+                <!-- SECCIÓN 5: Documentación (Opcional) -->
+                <div class="seccion-form full-width" style="margin-bottom:5px;">
+                    <h3><i class="fa-solid fa-images"></i> Documentación <small style="font-weight:normal;color:#888;">(Opcional)</small></h3>
+                    <div class="campos-grupo">
+                        <div class="campo full-width">
+                            <div class="zona-drop" id="registro-zona-arrastre">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <p>Arrastra imágenes o PDF aquí o <span>haz clic para buscar</span></p>
+                                <input type="file" id="registro-input-archivo" accept="image/*,application/pdf" multiple style="display:none">
+                            </div>
+                            <div id="registro-vista-previa" class="preview-img-contenedor" style="min-height:40px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="seccion-form full-width" style="margin-top:0;">
 
                 <div class="seccion-form full-width">
                     <h3><i class="fa-solid fa-comment-dots"></i> Observaciones</h3>
@@ -1241,20 +1316,30 @@ async function actualizarVistasDespuesEdicion() {
 
 let archivosTemporales = []; // Array global para acumular archivos
 
-function activarLogicaArrastre() {
-    const zona = document.getElementById('zona-arrastre');
-    const input = document.getElementById('input-archivo');
-    const vista = document.getElementById('vista-previa');
+function activarLogicaArrastre(prefix) {
+    prefix = prefix || '';
+    const zona = document.getElementById(prefix + 'zona-arrastre');
+    const input = document.getElementById(prefix + 'input-archivo');
+    const vista = document.getElementById(prefix + 'vista-previa');
 
     if(!zona) return;
 
     zona.onclick = () => input.click();
 
-    // Función para manejar la acumulación
     const agregarArchivos = (nuevosArchivos) => {
         const arrayNuevos = Array.from(nuevosArchivos);
-        archivosTemporales = [...archivosTemporales, ...arrayNuevos]; // Acumulamos
-        renderizarPreview();
+        archivosTemporales = [...archivosTemporales, ...arrayNuevos];
+        renderizarPreview(prefix);
+    };
+
+    zona.ondragover = (e) => {
+        e.preventDefault();
+        zona.classList.add('zona-activa');
+    };
+
+    zona.ondragleave = (e) => {
+        e.preventDefault();
+        zona.classList.remove('zona-activa');
     };
 
     zona.ondrop = (e) => {
@@ -1265,32 +1350,33 @@ function activarLogicaArrastre() {
 
     input.onchange = () => {
         agregarArchivos(input.files);
-        input.value = ""; // Limpiamos el input para poder seleccionar el mismo archivo si se desea
+        input.value = "";
     };
 }
 
-function renderizarPreview() {
-    const vista = document.getElementById('vista-previa');
-    vista.innerHTML = ""; // Limpiamos para volver a dibujar todo el array actualizado
+function renderizarPreview(prefix) {
+    prefix = prefix || '';
+    const vista = document.getElementById(prefix + 'vista-previa');
+    vista.innerHTML = "";
 
     archivosTemporales.forEach((archivo, index) => {
         const divPreview = document.createElement('div');
         divPreview.className = "preview-item-mini";
         
-        // Botón de eliminar (X)
         const btnEliminar = document.createElement('button');
         btnEliminar.innerHTML = "&times;";
         btnEliminar.className = "btn-quitar-archivo";
         btnEliminar.onclick = (e) => {
-            e.stopPropagation(); // Evita que se dispare el click del padre
+            e.stopPropagation();
             quitarArchivo(index);
+            renderizarPreview(prefix);
         };
 
         if (archivo.type === "application/pdf") {
             divPreview.innerHTML = `<div class="pdf-preview-item"><i class="fa-solid fa-file-pdf"></i><span>PDF</span></div>`;
         } else {
             const img = document.createElement('img');
-            img.src = URL.createObjectURL(archivo); // Más rápido que FileReader para previews
+            img.src = URL.createObjectURL(archivo);
             img.className = "img-preview-fichas";
             divPreview.appendChild(img);
         }
@@ -1301,8 +1387,7 @@ function renderizarPreview() {
 }
 
 function quitarArchivo(index) {
-    archivosTemporales.splice(index, 1); // Eliminamos del array
-    renderizarPreview(); // Volvemos a dibujar
+    archivosTemporales.splice(index, 1);
 }
 
 let todosLosEquipos = []; // Variable global para persistencia de datos
@@ -1326,7 +1411,6 @@ async function cargarInventario(contenedor) {
                         <select id="filtro-campo" class="select-estetico">
                             <option value="fmo">FMO</option>
                             <option value="serial">Serial</option>
-                            <option value="asignado">Asignado</option>
                             <option value="clase">Clase</option>
                             <option value="estado">Estado</option>
                         </select>
@@ -1338,14 +1422,14 @@ async function cargarInventario(contenedor) {
                 </div>
 
                 <div class="contenedor-tabla" style="overflow-x: auto;">
-                    <table class="tabla-datos">
+                    <table class="tabla-datos" style="text-align:center;">
                         <thead>
                             <tr>
-                                <th>Clase</th> <th>Tipo</th> <th>FMO</th> <th>Serial</th>
-                                <th>Marca</th> <th>Modelo</th> <th>Estado</th> 
-                                <th>Asignado</th> <th>Gerencia</th> <th>Departamento</th>
-                                <th>Observaciones</th> <th>Fecha Modif.</th>
-                                <th>Usuario Modif.</th> <th>Acciones</th>
+                                <th style="text-align:center;">Clase</th> <th style="text-align:center;">Tipo</th> <th style="text-align:center;">FMO</th> <th style="text-align:center;">Serial</th>
+                                <th style="text-align:center;">Marca</th> <th style="text-align:center;">Modelo</th> <th style="text-align:center;">Estado</th> 
+                                <th style="text-align:center;">Asignado</th> <th style="text-align:center;">Gerencia</th> <th style="text-align:center;">Departamento</th>
+                                <th style="text-align:center;">Observaciones</th> <th style="text-align:center;">Fecha Modif.</th>
+                                <th style="text-align:center;">Usuario Modif.</th> <th style="text-align:center;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="cuerpo-tabla"></tbody>
@@ -1399,24 +1483,24 @@ function actualizarCuerpoTabla(lista) {
         
         return `
             <tr>
-                <td>${equipo.clase || '-'}</td>
-                <td>${equipo.tipo || '-'}</td>
-                <td>${equipo.fmo || '-'}</td>
-                <td>${equipo.serial || '-'}</td>
-                <td>${equipo.marca || '-'}</td>
-                <td>${equipo.modelo || '-'}</td>
-                <td><span class="etiqueta-estado ${estadoClase}">${equipo.estado || 'N/A'}</span></td>
-                <td>${equipo.asignado || 'Sin Asignar'}</td>
-                <td>${equipo.gerencia || '-'}</td>
-                <td>${equipo.departamento || '-'}</td>
-                <td title="${equipo.observaciones || ''}">
+                <td style="text-align:center;">${equipo.clase || '-'}</td>
+                <td style="text-align:center;">${equipo.tipo || '-'}</td>
+                <td style="text-align:center;">${equipo.fmo || '-'}</td>
+                <td style="text-align:center;">${equipo.serial || '-'}</td>
+                <td style="text-align:center;">${equipo.marca || '-'}</td>
+                <td style="text-align:center;">${equipo.modelo || '-'}</td>
+                <td style="text-align:center;"><span class="etiqueta-estado ${estadoClase}">${equipo.estado || 'N/A'}</span></td>
+                <td style="text-align:center;">${equipo.asignado || 'Sin Asignar'}</td>
+                <td style="text-align:center;">${equipo.gerencia || '-'}</td>
+                <td style="text-align:center;">${equipo.departamento || '-'}</td>
+                <td style="text-align:center;" title="${equipo.observaciones || ''}">
                     <div style="max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${equipo.observaciones || '-'}
                     </div>
                 </td>
-                <td>${fechaMod}</td>
-                <td>${equipo.usuario_modificacion || 'Sistema'}</td>
-                <td class="celda-acciones">
+                <td style="text-align:center;">${fechaMod}</td>
+                <td style="text-align:center;">${equipo.usuario_modificacion || 'Sistema'}</td>
+                <td style="text-align:center;" class="celda-acciones">
                     <button class="btn-mini btn-ojo" title="Ver Detalles" onclick="abrirInterfazRegistro('ver_equipo', '${equipo.id}')">
                         <i class="fa-solid fa-eye"></i>
                     </button>
@@ -1442,30 +1526,53 @@ function actualizarCuerpoTabla(lista) {
 
 // Asegúrate de que esta función esté definida de forma global
 function confirmarEliminar(id) {
-    if (confirm("¿Estás seguro de que deseas eliminar este registro?")) {
-        // Aquí llamas a tu API para eliminar
-        fetch(`/api/equipos/${id}`, {
-            method: 'DELETE'
-        })
-        .then(response => {
-            if (response.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Eliminado',
-                    text: 'Registro eliminado correctamente.'
-                }).then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Error al eliminar el registro.'
-                });
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
+    // Buscar datos del equipo para mostrar en la confirmación
+    const equipo = todosLosEquipos.find(e => e.id == id);
+    const nombreEquipo = equipo ? `${equipo.marca || ''} ${equipo.modelo || ''} (${equipo.serial || ''})`.trim() : `ID: ${id}`;
+
+    Swal.fire({
+        title: '¿Eliminar equipo?',
+        html: `
+            <div style="text-align:left;">
+                <p style="margin-bottom:10px;">Estás a punto de eliminar:</p>
+                <p style="background:#f8f9fa; padding:10px; border-radius:6px; border-left:4px solid #e74c3c;">
+                    <strong>${nombreEquipo}</strong>
+                </p>
+                <p style="color:#888;font-size:0.85rem;margin-top:10px;">Esta acción no se puede deshacer.</p>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fa-solid fa-trash-can"></i> Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/equipos/${id}`, { method: 'DELETE' })
+            .then(response => {
+                if (response.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: 'Registro eliminado correctamente.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al eliminar el registro.'
+                    });
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    });
 }
 /**
  * Variables globales para almacenar los catálogos y filtrar localmente
@@ -1590,6 +1697,17 @@ function activarEscuchaFormulario() {
     });
 }
 
+// Limpiar archivos al resetear el formulario de registro
+document.addEventListener('reset', (e) => {
+    if (e.target && e.target.id === 'form-registro-equipo') {
+        setTimeout(() => {
+            archivosTemporales = [];
+            const previewReg = document.getElementById('registro-vista-previa');
+            if (previewReg) previewReg.innerHTML = '';
+        }, 50);
+    }
+});
+
 // Coloca esto al final de tu motor_navegacion.js, FUERA de cualquier función
 document.addEventListener('submit', async (e) => {
     // Verificamos si el formulario que se está enviando es el de registro
@@ -1621,12 +1739,34 @@ document.addEventListener('submit', async (e) => {
             const resultado = await respuesta.json();
 
             if (respuesta.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Éxito!',
-                    text: resultado.mensaje
-                });
-                e.target.reset(); // Limpia el formulario
+                const idNuevoEquipo = resultado.data?.id;
+
+                if (idNuevoEquipo && archivosTemporales && archivosTemporales.length > 0) {
+                    let errores = 0;
+                    for (const archivo of archivosTemporales) {
+                        const fd = new FormData();
+                        fd.append('orden_compra', datos.orden_compra || 'OC');
+                        fd.append('marca', datos.marca || 'Marca');
+                        fd.append('serial', datos.serial || 'S-S');
+                        fd.append('imagen', archivo);
+                        try {
+                            const r = await fetch(`/api/equipos/${idNuevoEquipo}/imagenes`, { method: 'POST', body: fd });
+                            if (!r.ok) errores++;
+                        } catch { errores++; }
+                    }
+                    archivosTemporales = [];
+                    if (errores === 0) {
+                        Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Equipo y documentos guardados correctamente' });
+                    } else {
+                        Swal.fire({ icon: 'warning', title: 'Atención', text: `Equipo registrado, pero ${errores} archivo(s) no se pudieron subir.` });
+                    }
+                } else {
+                    Swal.fire({ icon: 'success', title: '¡Éxito!', text: resultado.mensaje });
+                }
+                e.target.reset();
+                archivosTemporales = [];
+                const previewReg = document.getElementById('registro-vista-previa');
+                if (previewReg) previewReg.innerHTML = '';
             } else {
                 Swal.fire({
                     icon: 'error',
@@ -2264,8 +2404,9 @@ function actualizarDepartamentosEnEditModal(catalogos, equipo) {
 
         if (filtrados.length > 0) {
             filtrados.forEach(d => {
-                // Comprobar si coincide con el departamento que ya tenía asignado el equipo
-                const isSelected = String(d.id) === String(deptoIdActual) ? 'selected' : '';
+                const coincideId = String(d.id) === String(deptoIdActual);
+                const coincideNombre = deptoIdActual && String(d.nombre).toLowerCase().trim() === String(deptoIdActual).toLowerCase().trim();
+                const isSelected = (coincideId || coincideNombre) ? 'selected' : '';
                 selDepto.innerHTML += `<option value="${d.id}" ${isSelected}>${d.nombre}</option>`;
             });
         } else {

@@ -82,6 +82,36 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+// --- FUNCIÓN AUXILIAR PARA AUDITORÍA ---
+async function registrarAuditoria(operacion, idEquipo, idUsuario, datosEquipo, campoModificado, valorAnterior, valorNuevo) {
+    try {
+        const queryUsuario = await pool.query('SELECT nombre, apellido FROM usuario WHERE id = $1', [idUsuario]);
+        const nombreUsuario = queryUsuario.rows.length > 0 
+            ? `${queryUsuario.rows[0].nombre} ${queryUsuario.rows[0].apellido}` 
+            : 'Desconocido';
+
+        const query = `
+            INSERT INTO auditoria 
+            (operacion, id_equipo, id_usuario, nombre_usuario, fmo, serial_equipo, marca_equipo, modelo_equipo, clase_equipo, tipo_equipo, campo_modificado, valor_anterior, valor_nuevo) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `;
+        await pool.query(query, [
+            operacion, idEquipo, idUsuario, nombreUsuario,
+            datosEquipo.fmo || null,
+            datosEquipo.serial || null,
+            datosEquipo.marca || null,
+            datosEquipo.modelo || null,
+            datosEquipo.clase || null,
+            datosEquipo.tipo || null,
+            campoModificado || null,
+            valorAnterior || null,
+            valorNuevo || null
+        ]);
+    } catch (err) {
+        console.error("Error al registrar auditoría:", err.message);
+    }
+}
+
 
 // Endpoint para que el frontend verifique si hay sesión al cargar la página
 app.get('/api/verificar-sesion', (req, res) => {
@@ -252,13 +282,44 @@ app.post('/api/equipos', verificarSesion, async (req, res) => {
             RETURNING *;
         `;
 
-        const valores = [fmo, serial, tipo, idClaseFinal, marca, modelo, departamento, responsable, estado, observaciones, req.session.usuarioId];
+        const valores = [
+            fmo || null,
+            serial || null,
+            tipo || null,
+            idClaseFinal,
+            marca || null,
+            modelo || null,
+            departamento || null,
+            responsable || null,
+            estado || null,
+            observaciones || null,
+            req.session.usuarioId
+        ];
         const resultado = await pool.query(queryEquipo, valores);
 
-        res.status(201).json({ mensaje: 'Equipo y clase registrados con éxito', data: resultado.rows[0] });
+        const equipoNuevo = resultado.rows[0];
+        const nombreClase = clase || (idClaseFinal ? 'ID:' + idClaseFinal : null);
+        await registrarAuditoria('INSERT', equipoNuevo.id, req.session.usuarioId, {
+            fmo: equipoNuevo.fmo,
+            serial: equipoNuevo.serial,
+            marca: equipoNuevo.marca,
+            modelo: equipoNuevo.modelo,
+            clase: nombreClase,
+            tipo: equipoNuevo.tipo
+        }, null, null, null);
+
+        res.status(201).json({ mensaje: 'Equipo y clase registrados con éxito', data: equipoNuevo });
 
     } catch (err) {
         console.error(err.message);
+        if (err.code === '23505') {
+            const msg = err.constraint?.includes('fmo') 
+                ? 'El número FMO ya está registrado en el sistema.'
+                : err.constraint?.includes('serial')
+                ? 'El número de serie ya está registrado en el sistema.'
+                : 'Este equipo ya existe o ya está registrado en el sistema.';
+            return res.status(409).json({ error: msg });
+        }
         res.status(500).json({ error: 'Error en el proceso dinámico: ' + err.message });
     }
 });
@@ -269,29 +330,36 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
     const { fmo, serial, tipo, clase, marca, modelo, departamento, responsable, estado, observaciones } = req.body;
 
     try {
+        // 0. OBTENER DATOS VIEJOS DEL EQUIPO
+        const oldData = await pool.query(`
+            SELECT e.*, c.nombre AS clase_nombre
+            FROM equipo e
+            LEFT JOIN clase_equipo c ON e.id_clase = c.id
+            WHERE e.id = $1
+        `, [id]);
+
+        if (oldData.rows.length === 0) {
+            return res.status(404).json({ error: 'El equipo no existe.' });
+        }
+
+        const viejo = oldData.rows[0];
+
         // 1. MANEJO POLIMÓRFICO DE LA CLASE
         let idClaseFinal = null;
+        let claseNombre = null;
 
         if (clase !== undefined && clase !== null) {
-            // Verificamos si 'clase' ya es un ID numérico (enviado por el select del modal)
             if (!isNaN(clase) && Number.isInteger(Number(clase))) {
                 idClaseFinal = parseInt(clase);
-            } 
-            // Si es un texto (enviado manualmente o por procesos de creación rápida)
-            else if (typeof clase === 'string' && clase.trim() !== "") {
-                const nombreLimpio = clase.trim();
-                const buscarClase = await pool.query(
-                    'SELECT id FROM clase_equipo WHERE LOWER(nombre) = LOWER($1)', 
-                    [nombreLimpio]
-                );
-                
+                const resClase = await pool.query('SELECT nombre FROM clase_equipo WHERE id = $1', [idClaseFinal]);
+                claseNombre = resClase.rows.length > 0 ? resClase.rows[0].nombre : String(idClaseFinal);
+            } else if (typeof clase === 'string' && clase.trim() !== "") {
+                claseNombre = clase.trim();
+                const buscarClase = await pool.query('SELECT id FROM clase_equipo WHERE LOWER(nombre) = LOWER($1)', [claseNombre]);
                 if (buscarClase.rows.length > 0) {
                     idClaseFinal = buscarClase.rows[0].id;
                 } else {
-                    const nuevaClase = await pool.query(
-                        'INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', 
-                        [nombreLimpio]
-                    );
+                    const nuevaClase = await pool.query('INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', [claseNombre]);
                     idClaseFinal = nuevaClase.rows[0].id;
                 }
             }
@@ -318,18 +386,9 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
         `;
 
         const valores = [
-            fmo,            // $1
-            serial,         // $2
-            tipo,           // $3
-            idClaseFinal,   // $4 (Ya sea el ID detectado o el nuevo creado)
-            marca,          // $5
-            modelo,         // $6
-            departamento,   // $7 (FK)
-            responsable,    // $8 (FK)
-            estado,         // $9
-            observaciones,  // $10
-            id,             // $11
-            req.session.usuarioId // $12
+            fmo || null, serial || null, tipo || null, idClaseFinal, marca || null, modelo || null,
+            departamento || null, responsable || null, estado || null, observaciones || null,
+            id, req.session.usuarioId
         ];
 
         const resultado = await pool.query(queryUpdate, valores);
@@ -338,9 +397,78 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
             return res.status(404).json({ error: 'El equipo no existe.' });
         }
 
+        const nuevo = resultado.rows[0];
+
+        // 3. COMPARAR Y AUDITAR CADA CAMBIO
+        const ahora = req.session.usuarioId;
+
+        // Resolver nombres de departamento, gerencia y responsable
+        let deptoViejoNombre = null, deptoNuevoNombre = null;
+        let gerenciaViejo = null, gerenciaNuevo = null;
+        if (viejo.id_departamento) {
+            const r = await pool.query(`SELECT d.nombre AS depto, g.nombre AS gerencia FROM departamento d LEFT JOIN gerencia g ON d.id_gerencia = g.id WHERE d.id = $1`, [viejo.id_departamento]);
+            if (r.rows.length > 0) {
+                deptoViejoNombre = r.rows[0].depto;
+                gerenciaViejo = r.rows[0].gerencia;
+            } else {
+                deptoViejoNombre = String(viejo.id_departamento);
+            }
+        }
+        if (departamento) {
+            const r = await pool.query(`SELECT d.nombre AS depto, g.nombre AS gerencia FROM departamento d LEFT JOIN gerencia g ON d.id_gerencia = g.id WHERE d.id = $1`, [departamento]);
+            if (r.rows.length > 0) {
+                deptoNuevoNombre = r.rows[0].depto;
+                gerenciaNuevo = r.rows[0].gerencia;
+            } else {
+                deptoNuevoNombre = String(departamento);
+            }
+        }
+
+        let respViejoNombre = null, respNuevoNombre = null;
+        if (viejo.id_responsable) {
+            const r = await pool.query("SELECT nombre || ' ' || apellido AS nombre FROM responsable WHERE id = $1", [viejo.id_responsable]);
+            respViejoNombre = r.rows.length > 0 ? r.rows[0].nombre : String(viejo.id_responsable);
+        }
+        if (responsable) {
+            const r = await pool.query("SELECT nombre || ' ' || apellido AS nombre FROM responsable WHERE id = $1", [responsable]);
+            respNuevoNombre = r.rows.length > 0 ? r.rows[0].nombre : String(responsable);
+        }
+
+        const cambios = [
+            { campo: 'FMO', viejo: viejo.fmo, nuevo: nuevo.fmo },
+            { campo: 'Serial', viejo: viejo.serial, nuevo: nuevo.serial },
+            { campo: 'Marca', viejo: viejo.marca, nuevo: nuevo.marca },
+            { campo: 'Modelo', viejo: viejo.modelo, nuevo: nuevo.modelo },
+            { campo: 'Estado', viejo: viejo.estado, nuevo: nuevo.estado },
+            { campo: 'Tipo', viejo: viejo.tipo, nuevo: nuevo.tipo },
+            { campo: 'Observacion', viejo: viejo.observacion, nuevo: nuevo.observacion },
+            { campo: 'Clase', viejo: viejo.clase_nombre, nuevo: claseNombre },
+            { campo: 'Gerencia', viejo: gerenciaViejo, nuevo: gerenciaNuevo },
+            { campo: 'Departamento', viejo: deptoViejoNombre, nuevo: deptoNuevoNombre },
+            { campo: 'Responsable', viejo: respViejoNombre, nuevo: respNuevoNombre }
+        ];
+
+        const cambiosDetectados = [];
+        for (const c of cambios) {
+            if (String(c.viejo || '') !== String(c.nuevo || '')) {
+                cambiosDetectados.push(`<strong>${c.campo}:</strong> '${String(c.viejo || '')}' → '${String(c.nuevo || '')}'`);
+            }
+        }
+
+        if (cambiosDetectados.length > 0) {
+            await registrarAuditoria('UPDATE', nuevo.id, ahora, {
+                fmo: nuevo.fmo,
+                serial: nuevo.serial,
+                marca: nuevo.marca,
+                modelo: nuevo.modelo,
+                clase: claseNombre || viejo.clase_nombre,
+                tipo: nuevo.tipo
+            }, null, null, cambiosDetectados.join('\n'));
+        }
+
         res.json({ 
             mensaje: 'Equipo actualizado correctamente', 
-            data: resultado.rows[0] 
+            data: nuevo 
         });
 
     } catch (err) {
@@ -378,7 +506,7 @@ app.post('/api/departamentos',verificarSesion, async (req, res) => {
         `;
         
         const resultado = await pool.query(query, [nombre, centro_costo, id_gerencia]);
-        
+        await registrarAuditoria('INSERT', null, req.session.usuarioId, {}, 'Departamento', null, nombre);
         res.status(201).json({ 
             id: resultado.rows[0].id, 
             mensaje: "Departamento registrado exitosamente" 
@@ -417,7 +545,7 @@ app.post('/api/gerencias',verificarSesion, async (req, res) => {
         `;
         
         const resultado = await pool.query(query, [nombre]);
-        
+        await registrarAuditoria('INSERT', null, req.session.usuarioId, {}, 'Gerencia', null, nombre);
         res.status(201).json({ 
             id: resultado.rows[0].id, 
             mensaje: "Gerencia registrada exitosamente" 
@@ -457,7 +585,7 @@ app.post('/api/responsables',verificarSesion, async (req, res) => {
         `;
         
         const resultado = await pool.query(query, [cedula, nombre, apellido, id_departamento]);
-        
+        await registrarAuditoria('INSERT', null, req.session.usuarioId, {}, 'Responsable', null, `${nombre} ${apellido}`);
         res.status(201).json({ 
             id: resultado.rows[0].id, 
             mensaje: "Responsable registrado exitosamente" 
@@ -490,6 +618,7 @@ app.post('/api/clases',verificarSesion, async (req, res) => {
             'INSERT INTO clase_equipo (nombre) VALUES ($1) RETURNING id', 
             [nombre]
         );
+        await registrarAuditoria('INSERT', null, req.session.usuarioId, {}, 'Clase', null, nombre);
         res.status(201).json({ id: resultado.rows[0].id, nombre });
     } catch (err) {
         console.error(err);
@@ -503,18 +632,12 @@ app.get('/api/auditoria',verificarSesion, async (req, res) => {
     try {
         const query = `
             SELECT 
-                e.fmo, 
-                e.serial, 
-                c.nombre AS clase_nombre, 
-                e.tipo, 
-                e.estado, 
-                e.fecha_modificacion, 
-                CONCAT(r.nombre, ' ', r.apellido) AS responsable_completo
-            FROM equipo e
-            LEFT JOIN clase_equipo c ON e.id_clase = c.id
-            LEFT JOIN responsable r ON e.id_responsable = r.id
-            WHERE e.fecha_modificacion::date BETWEEN $1 AND $2 
-            ORDER BY e.fecha_modificacion DESC
+                id, operacion, id_equipo, nombre_usuario, fecha,
+                fmo, serial_equipo, marca_equipo, modelo_equipo, clase_equipo, tipo_equipo,
+                campo_modificado, valor_anterior, valor_nuevo
+            FROM auditoria
+            WHERE fecha::date BETWEEN $1 AND $2 
+            ORDER BY fecha DESC
         `;
         const resultado = await pool.query(query, [fecha_inicio, fecha_fin]);
         res.json(resultado.rows);
@@ -527,17 +650,35 @@ app.get('/api/auditoria',verificarSesion, async (req, res) => {
 // ELIMINAR usando ID
 // ELIMINAR usando ID corregido
 app.delete('/api/equipos/:id',verificarSesion, async (req, res) => {
-    // Limpiamos el ID directamente al recibirlo
     const id = req.params.id.toString().replace(/\D/g, ''); 
     
     console.log("Servidor procesando eliminación para ID:", id);
 
     try {
-        const resultado = await pool.query('DELETE FROM equipo WHERE id = $1', [id]);
-        
-        if (resultado.rowCount === 0) {
+        // Obtener datos del equipo antes de eliminarlo (para auditoría)
+        const dataEquipo = await pool.query(`
+            SELECT e.*, c.nombre AS clase_nombre
+            FROM equipo e
+            LEFT JOIN clase_equipo c ON e.id_clase = c.id
+            WHERE e.id = $1
+        `, [id]);
+
+        if (dataEquipo.rows.length === 0) {
             return res.status(404).send("Registro no encontrado");
         }
+
+        const equipoEliminado = dataEquipo.rows[0];
+
+        await registrarAuditoria('DELETE', id, req.session.usuarioId, {
+            fmo: equipoEliminado.fmo,
+            serial: equipoEliminado.serial,
+            marca: equipoEliminado.marca,
+            modelo: equipoEliminado.modelo,
+            clase: equipoEliminado.clase_nombre,
+            tipo: equipoEliminado.tipo
+        }, null, null, null);
+
+        await pool.query('DELETE FROM equipo WHERE id = $1', [id]);
 
         res.status(200).send("Eliminado correctamente");
     } catch (err) {
@@ -562,12 +703,44 @@ app.put('/api/equipos/:id',verificarSesion, async (req, res) => {
     const { serial, marca, estado, id_responsable, observaciones } = req.body;
 
     try {
+        // Obtener datos viejos
+        const oldData = await pool.query('SELECT * FROM equipo WHERE id = $1', [id]);
+        if (oldData.rows.length === 0) {
+            return res.status(404).json({ error: "Equipo no encontrado" });
+        }
+        const viejo = oldData.rows[0];
+
         const query = `
             UPDATE equipo
-            SET serial = $1, marca = $2, estado = $3, id_responsable = $4, observaciones = $5, fecha_modificacion = NOW(), id_usuario = $7
+            SET serial = $1, marca = $2, estado = $3, id_responsable = $4, observacion = $5, fecha_modificacion = NOW(), id_usuario = $7
             WHERE id = $6
+            RETURNING *
         `;
-        await pool.query(query, [serial, marca, estado, id_responsable, observaciones, id, req.session.usuarioId]);
+        const result = await pool.query(query, [serial || null, marca || null, estado || null, id_responsable || null, observaciones || null, id, req.session.usuarioId]);
+        const nuevo = result.rows[0];
+
+        // Auditar cambios
+        const cambios = [
+            { campo: 'Serial', viejo: viejo.serial, nuevo: nuevo.serial },
+            { campo: 'Marca', viejo: viejo.marca, nuevo: nuevo.marca },
+            { campo: 'Estado', viejo: viejo.estado, nuevo: nuevo.estado },
+            { campo: 'Responsable', viejo: String(viejo.id_responsable || ''), nuevo: String(nuevo.id_responsable || '') },
+            { campo: 'Observacion', viejo: viejo.observacion, nuevo: nuevo.observacion }
+        ];
+
+        const cambiosDetectados2 = [];
+        for (const c of cambios) {
+            if (String(c.viejo || '') !== String(c.nuevo || '')) {
+                cambiosDetectados2.push(`<strong>${c.campo}:</strong> '${String(c.viejo || '')}' → '${String(c.nuevo || '')}'`);
+            }
+        }
+
+        if (cambiosDetectados2.length > 0) {
+            await registrarAuditoria('UPDATE', nuevo.id, req.session.usuarioId, {
+                fmo: nuevo.fmo, serial: nuevo.serial, marca: nuevo.marca, modelo: nuevo.modelo, tipo: nuevo.tipo
+            }, null, null, cambiosDetectados2.join('\n'));
+        }
+
         res.status(200).json({ message: "Equipo actualizado con éxito" });
     } catch (err) {
         res.status(500).json({ error: "Error al actualizar: " + err.message });
@@ -734,7 +907,11 @@ app.put('/api/clases/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre } = req.body;
+        const old = await pool.query('SELECT nombre FROM clase_equipo WHERE id = $1', [id]);
         await pool.query('UPDATE clase_equipo SET nombre = $1 WHERE id = $2', [nombre, id]);
+        if (old.rows.length > 0) {
+            await registrarAuditoria('UPDATE', null, req.session.usuarioId, {}, 'Clase', old.rows[0].nombre, nombre);
+        }
         res.status(200).send("Clase actualizada");
     } catch (err) {
         res.status(500).send("Error en servidor");
@@ -746,7 +923,11 @@ app.put('/api/gerencias/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre } = req.body;
+        const old = await pool.query('SELECT nombre FROM gerencia WHERE id = $1', [id]);
         await pool.query('UPDATE gerencia SET nombre = $1 WHERE id = $2', [nombre, id]);
+        if (old.rows.length > 0) {
+            await registrarAuditoria('UPDATE', null, req.session.usuarioId, {}, 'Gerencia', old.rows[0].nombre, nombre);
+        }
         res.status(200).send("Gerencia actualizada");
     } catch (err) {
         res.status(500).send("Error en servidor");
@@ -758,7 +939,11 @@ app.put('/api/departamentos/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre } = req.body;
+        const old = await pool.query('SELECT nombre FROM departamento WHERE id = $1', [id]);
         await pool.query('UPDATE departamento SET nombre = $1 WHERE id = $2', [nombre, id]);
+        if (old.rows.length > 0) {
+            await registrarAuditoria('UPDATE', null, req.session.usuarioId, {}, 'Departamento', old.rows[0].nombre, nombre);
+        }
         res.status(200).send("Departamento actualizado");
     } catch (err) {
         res.status(500).send("Error en servidor");
@@ -769,11 +954,14 @@ app.put('/api/responsables/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
         const { cedula, nombre, apellido, id_departamento } = req.body;
-        
+        const old = await pool.query('SELECT nombre, apellido FROM responsable WHERE id = $1', [id]);
         await pool.query(
             'UPDATE responsable SET cedula = $1, nombre = $2, apellido = $3, id_departamento = $4 WHERE id = $5', 
             [cedula, nombre, apellido, id_departamento, id]
         );
+        if (old.rows.length > 0) {
+            await registrarAuditoria('UPDATE', null, req.session.usuarioId, {}, 'Responsable', `${old.rows[0].nombre} ${old.rows[0].apellido}`, `${nombre} ${apellido}`);
+        }
         res.status(200).send("Responsable actualizado correctamente");
     } catch (err) {
         console.error(err);
@@ -786,7 +974,11 @@ app.put('/api/responsables/:id', verificarSesion, async (req, res) => {
 app.delete('/api/clases/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
+        const old = await pool.query('SELECT nombre FROM clase_equipo WHERE id = $1', [id]);
         await pool.query('DELETE FROM clase_equipo WHERE id = $1', [id]);
+        if (old.rows.length > 0) {
+            await registrarAuditoria('DELETE', null, req.session.usuarioId, {}, 'Clase', old.rows[0].nombre, null);
+        }
         res.status(200).send("Clase eliminada");
     } catch (err) {
         console.error(err);
@@ -798,7 +990,11 @@ app.delete('/api/clases/:id', verificarSesion, async (req, res) => {
 app.delete('/api/gerencias/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
+        const old = await pool.query('SELECT nombre FROM gerencia WHERE id = $1', [id]);
         await pool.query('DELETE FROM gerencia WHERE id = $1', [id]);
+        if (old.rows.length > 0) {
+            await registrarAuditoria('DELETE', null, req.session.usuarioId, {}, 'Gerencia', old.rows[0].nombre, null);
+        }
         res.status(200).send("Gerencia y departamentos asociados eliminados.");
     } catch (err) {
         console.error(err);
@@ -810,7 +1006,11 @@ app.delete('/api/gerencias/:id', verificarSesion, async (req, res) => {
 app.delete('/api/departamentos/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
+        const old = await pool.query('SELECT nombre FROM departamento WHERE id = $1', [id]);
         await pool.query('DELETE FROM departamento WHERE id = $1', [id]);
+        if (old.rows.length > 0) {
+            await registrarAuditoria('DELETE', null, req.session.usuarioId, {}, 'Departamento', old.rows[0].nombre, null);
+        }
         res.status(200).send("Departamento eliminado.");
     } catch (err) {
         console.error(err);
@@ -822,7 +1022,11 @@ app.delete('/api/departamentos/:id', verificarSesion, async (req, res) => {
 app.delete('/api/responsables/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
+        const old = await pool.query('SELECT nombre, apellido FROM responsable WHERE id = $1', [id]);
         await pool.query('DELETE FROM responsable WHERE id = $1', [id]);
+        if (old.rows.length > 0) {
+            await registrarAuditoria('DELETE', null, req.session.usuarioId, {}, 'Responsable', `${old.rows[0].nombre} ${old.rows[0].apellido}`, null);
+        }
         res.status(200).send("Responsable removido.");
     } catch (err) {
         console.error(err);

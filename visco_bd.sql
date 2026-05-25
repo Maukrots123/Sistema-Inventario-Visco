@@ -2,8 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict LvvmDuY9XMflf3V6eW97mKNIuMjqBhSyBLEFckwUwddFAbfk8gBfOaOaJPTSoKf
-
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
 
@@ -15,7 +13,7 @@ SET idle_in_transaction_session_timeout = 0;
 SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+SET search_path TO public;
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -25,16 +23,38 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
+-- Eliminar tablas si existen (orden inverso a dependencias)
+DROP TABLE IF EXISTS public.imagen_equipo CASCADE;
+DROP TABLE IF EXISTS public.auditoria CASCADE;
+DROP TABLE IF EXISTS public.equipo CASCADE;
+DROP TABLE IF EXISTS public.responsable CASCADE;
+DROP TABLE IF EXISTS public.departamento CASCADE;
+DROP TABLE IF EXISTS public.jefe_turno CASCADE;
+DROP TABLE IF EXISTS public.usuario CASCADE;
+DROP TABLE IF EXISTS public.clase_equipo CASCADE;
+DROP TABLE IF EXISTS public.gerencia CASCADE;
+
 --
 -- TOC entry 232 (class 1259 OID 16506)
 -- Name: auditoria; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.auditoria (
-    operacion character varying(20) NOT NULL,
+    id SERIAL PRIMARY KEY,
+    operacion character varying(10) NOT NULL,
     id_equipo integer,
     id_usuario integer,
-    fecha timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    nombre_usuario character varying(100),
+    fecha timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    fmo character varying(20),
+    serial_equipo character varying(50),
+    marca_equipo character varying(50),
+    modelo_equipo character varying(50),
+    clase_equipo character varying(50),
+    tipo_equipo character varying(50),
+    campo_modificado character varying(50),
+    valor_anterior text,
+    valor_nuevo text
 );
 
 
@@ -154,6 +174,21 @@ CREATE SEQUENCE public.equipo_id_seq
 --
 
 ALTER SEQUENCE public.equipo_id_seq OWNED BY public.equipo.id;
+
+
+--
+-- Name: imagen_equipo; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.imagen_equipo (
+    id integer NOT NULL,
+    id_equipo integer NOT NULL,
+    ruta_archivo character varying(255) NOT NULL,
+    tipo_documento character varying(100)
+);
+
+
+ALTER TABLE public.imagen_equipo ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY;
 
 
 --
@@ -332,8 +367,7 @@ ALTER TABLE ONLY public.usuario ALTER COLUMN id SET DEFAULT nextval('public.usua
 -- Data for Name: auditoria; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.auditoria (operacion, id_equipo, id_usuario, fecha) FROM stdin;
-\.
+-- No hay datos para auditoria
 
 
 --
@@ -342,13 +376,12 @@ COPY public.auditoria (operacion, id_equipo, id_usuario, fecha) FROM stdin;
 -- Data for Name: clase_equipo; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.clase_equipo (id, nombre) FROM stdin;
-1	PC
-2	g
-3	equipo
-4	periferico
-5	TECLADO
-\.
+INSERT INTO public.clase_equipo (id, nombre) VALUES
+(1, 'PC'),
+(2, 'g'),
+(3, 'equipo'),
+(4, 'periferico'),
+(5, 'TECLADO');
 
 
 --
@@ -357,11 +390,10 @@ COPY public.clase_equipo (id, nombre) FROM stdin;
 -- Data for Name: departamento; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.departamento (id, nombre, centro_costo, id_gerencia, id_jefe) FROM stdin;
-1	Soporte Técnico	CECO-IT-001	1	\N
-2	Recursos humanos	\N	2	\N
-3	Seguridad	3564743	3	\N
-\.
+INSERT INTO public.departamento (id, nombre, centro_costo, id_gerencia, id_jefe) VALUES
+(1, 'Soporte Técnico', 'CECO-IT-001', 1, NULL),
+(2, 'Recursos humanos', NULL, 2, NULL),
+(3, 'Seguridad', '3564743', 3, NULL);
 
 
 --
@@ -370,9 +402,8 @@ COPY public.departamento (id, nombre, centro_costo, id_gerencia, id_jefe) FROM s
 -- Data for Name: equipo; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.equipo (id, fmo, serial, marca, estado, tipo, observacion, orden_compra, fecha_registro, fecha_modificacion, id_clase, id_departamento, id_responsable, modelo) FROM stdin;
-17	123	678	dell	Asignado	gg		\N	2026-04-28 19:58:23.109881	2026-04-28 19:58:23.109881	5	3	2	\N
-\.
+INSERT INTO public.equipo (id, fmo, serial, marca, estado, tipo, observacion, orden_compra, fecha_registro, fecha_modificacion, id_clase, id_departamento, id_responsable, modelo) VALUES
+(17, '123', '678', 'dell', 'Asignado', 'gg', '', NULL, '2026-04-28 19:58:23.109881', '2026-04-28 19:58:23.109881', 5, 3, 2, NULL);
 
 
 --
@@ -381,11 +412,10 @@ COPY public.equipo (id, fmo, serial, marca, estado, tipo, observacion, orden_com
 -- Data for Name: gerencia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.gerencia (id, nombre) FROM stdin;
-1	Gerencia de Telematica
-2	Talento Humano
-3	Gerencia General
-\.
+INSERT INTO public.gerencia (id, nombre) VALUES
+(1, 'Gerencia de Telematica'),
+(2, 'Talento Humano'),
+(3, 'Gerencia General');
 
 
 --
@@ -394,8 +424,7 @@ COPY public.gerencia (id, nombre) FROM stdin;
 -- Data for Name: jefe_turno; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.jefe_turno (cedula, nombre, apellido) FROM stdin;
-\.
+-- No hay datos para jefe_turno
 
 
 --
@@ -404,11 +433,10 @@ COPY public.jefe_turno (cedula, nombre, apellido) FROM stdin;
 -- Data for Name: responsable; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.responsable (id, cedula, nombre, apellido, id_departamento) FROM stdin;
-1	V-30820542	Mauricio	Arismendi	1
-2	v-30999999	luis	lopez	2
-3	30912333	fermin	gomez	3
-\.
+INSERT INTO public.responsable (id, cedula, nombre, apellido, id_departamento) VALUES
+(1, 'V-30820542', 'Mauricio', 'Arismendi', 1),
+(2, 'v-30999999', 'luis', 'lopez', 2),
+(3, '30912333', 'fermin', 'gomez', 3);
 
 
 --
@@ -417,11 +445,10 @@ COPY public.responsable (id, cedula, nombre, apellido, id_departamento) FROM std
 -- Data for Name: usuario; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.usuario (id, cedula, nombre, apellido, clave, rol, usuario_nombre) FROM stdin;
-1	30820542	mauro	arismendi	mau	\N	mauro
-2	12007888	mario	martinez	lol	admin	mario
-3	30912333	luis	gomez	$2b$10$cWwx4xtFiFZ9uXbzhmM23u.JbODrb0cdY6YfA1pRljlbboBeUAgN.	usuario	luis123
-\.
+INSERT INTO public.usuario (id, cedula, nombre, apellido, clave, rol, usuario_nombre) VALUES
+(1, '30820542', 'mauro', 'arismendi', 'mau', NULL, 'mauro'),
+(2, '12007888', 'mario', 'martinez', 'lol', 'admin', 'mario'),
+(3, '30912333', 'luis', 'gomez', '$2b$10$cWwx4xtFiFZ9uXbzhmM23u.JbODrb0cdY6YfA1pRljlbboBeUAgN.', 'usuario', 'luis123');
 
 
 --
@@ -657,6 +684,13 @@ ALTER TABLE ONLY public.equipo
 ALTER TABLE ONLY public.equipo
     ADD CONSTRAINT equipo_id_usuario_fkey FOREIGN KEY (id_usuario) REFERENCES public.usuario(id);
 
+--
+-- Name: imagen_equipo imagen_equipo_id_equipo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imagen_equipo
+    ADD CONSTRAINT imagen_equipo_id_equipo_fkey FOREIGN KEY (id_equipo) REFERENCES public.equipo(id) ON DELETE CASCADE;
+
 
 --
 -- TOC entry 4923 (class 2606 OID 16449)
@@ -673,5 +707,4 @@ ALTER TABLE ONLY public.responsable
 -- PostgreSQL database dump complete
 --
 
-\unrestrict LvvmDuY9XMflf3V6eW97mKNIuMjqBhSyBLEFckwUwddFAbfk8gBfOaOaJPTSoKf
 
