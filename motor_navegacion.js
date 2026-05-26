@@ -538,7 +538,7 @@ function cargarFormularioRegistro(contenedor) {
                     <div class="campos-grupo">
                         <div class="campo">
                             <label>Centro de Costo (CECO)</label>
-                            <input type="text" name="centro_costo" placeholder="Código CECO">
+                            <div id="reg-centro-costo-display" style="padding:10px 12px; background:#f0f0f0; border-radius:5px; color:#555; font-size:0.95rem;">Seleccione un departamento</div>
                         </div>
                         <div class="campo">
                             <label>Estado Actual</label>
@@ -947,6 +947,7 @@ async function abrirInterfazRegistro(tipo, data = null) {
                             <p><strong>Estado:</strong> <span class="status-${String(e.estado).toLowerCase()}">${e.estado}</span></p>
                             <p><strong>Gerencia:</strong> ${e.gerencia || 'N/A'}</p>
                             <p><strong>Departamento:</strong> ${e.departamento || 'N/A'}</p>
+                            <p><strong>C. Costo:</strong> ${e.centro_costo || 'N/A'}</p>
                             <p><strong>Responsable:</strong> ${e.asignado || 'Sin responsable'}</p>
                         </div>
 
@@ -1413,12 +1414,21 @@ async function cargarInventario(contenedor) {
                             <option value="serial">Serial</option>
                             <option value="clase">Clase</option>
                             <option value="estado">Estado</option>
+                            <option value="gerencia">Gerencia</option>
+                            <option value="departamento">Departamento</option>
+                            <option value="marca">Marca</option>
+                            <option value="tipo">Tipo</option>
                         </select>
                     </div>
 
-                    <button class="btn-reporte-premium" onclick="abrirModal()">
-                        <i class="fa-solid fa-file-pdf"></i> GENERAR REPORTE
-                    </button>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button class="btn-reporte-premium" onclick="abrirModal()">
+                            <i class="fa-solid fa-file-pdf"></i> GENERAR REPORTE
+                        </button>
+                        <button class="btn-reporte-premium" onclick="generarPDFCompleto()" style="background:#2c3e50;">
+                            <i class="fa-solid fa-file-pdf"></i> REPORTE COMPLETO
+                        </button>
+                    </div>
                 </div>
 
                 <div class="contenedor-tabla" style="overflow-x: auto;">
@@ -1445,7 +1455,6 @@ async function cargarInventario(contenedor) {
 
         // 3. Lógica de filtrado con correcciones (Espacios y Coincidencia inicial)
         inputBusqueda.addEventListener('input', () => {
-            // CORRECCIÓN: .trim() elimina espacios muertos al inicio/final
             const texto = inputBusqueda.value.trim().toLowerCase();
             const campo = filtroCampo.value;
 
@@ -1456,7 +1465,6 @@ async function cargarInventario(contenedor) {
 
             const filtrados = todosLosEquipos.filter(equipo => {
                 const valor = String(equipo[campo] || "").toLowerCase();
-                // CORRECCIÓN: .startsWith() busca solo desde el inicio de la cadena
                 return valor.startsWith(texto);
             });
 
@@ -1638,6 +1646,15 @@ async function cargarOpcionesFormulario() {
             filtrados.forEach(d => {
                 selDepto.innerHTML += `<option value="${d.id}">${d.nombre}</option>`;
             });
+            document.getElementById('reg-centro-costo-display').innerText = 'Seleccione un departamento';
+        });
+
+        // Mostrar centro de costo al seleccionar departamento
+        selDepto.addEventListener('change', () => {
+            const idDeptoSel = selDepto.value;
+            const display = document.getElementById('reg-centro-costo-display');
+            const depto = catalogoDepartamentos.find(d => d.id == idDeptoSel);
+            display.innerText = depto && depto.centro_costo ? depto.centro_costo : 'No asignado';
         });
 
     } catch (error) {
@@ -2494,6 +2511,48 @@ function ejecutarGeneracionPDF() {
     
     doc.save(`Reporte_${nomD}.pdf`);
     cerrarModal();
+}
+
+function generarPDFCompleto() {
+    if (!todosLosEquipos || todosLosEquipos.length === 0) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Sin datos',
+            text: 'No hay equipos registrados en el inventario.'
+        });
+    }
+
+    Swal.fire({
+        title: 'Generando reporte...',
+        text: 'Procesando todo el inventario',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+
+    doc.setFontSize(14);
+    doc.text("REPORTE COMPLETO DE INVENTARIO", 148, 15, { align: "center" });
+    doc.setFontSize(10);
+    doc.text(`Generado: ${new Date().toLocaleDateString()}`, 148, 22, { align: "center" });
+    doc.text(`Total de equipos: ${todosLosEquipos.length}`, 148, 28, { align: "center" });
+
+    doc.autoTable({
+        startY: 33,
+        head: [["N", "Clase", "Tipo", "FMO", "Serial", "Marca", "Modelo", "Estado", "Gerencia", "Depto", "C. Costo", "Responsable"]],
+        body: todosLosEquipos.map((e, i) => [
+            i + 1, e.clase, e.tipo, e.fmo, e.serial, e.marca, e.modelo,
+            e.estado, e.gerencia, e.departamento, e.centro_costo, e.asignado
+        ]),
+        theme: 'grid',
+        styles: { fontSize: 7 },
+        headStyles: { fontSize: 7 }
+    });
+
+    doc.save(`Reporte_Completo_Inventario.pdf`);
+
+    Swal.close();
 }
 
 function cerrarSesion() {

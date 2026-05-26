@@ -391,9 +391,10 @@ INSERT INTO public.clase_equipo (id, nombre) VALUES
 --
 
 INSERT INTO public.departamento (id, nombre, centro_costo, id_gerencia, id_jefe) VALUES
-(1, 'Soporte Técnico', 'CECO-IT-001', 1, NULL),
+(1, 'Soporte Técnico', '123456', 1, NULL),
 (2, 'Recursos humanos', NULL, 2, NULL),
 (3, 'Seguridad', '3564743', 3, NULL);
+
 
 
 --

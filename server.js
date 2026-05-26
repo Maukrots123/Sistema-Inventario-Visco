@@ -231,6 +231,7 @@ app.get('/api/equipos',verificarSesion, async (req, res) => {
                 e.fecha_modificacion,
                 c.nombre AS clase,
                 d.nombre AS departamento,
+                d.centro_costo,
                 g.nombre AS gerencia,
                 r.nombre || ' ' || r.apellido AS asignado,
                 u.nombre AS usuario_modificacion
@@ -481,7 +482,7 @@ app.put('/api/equipos/:id', verificarSesion, async (req, res) => {
 app.get('/api/departamentos',verificarSesion, async (req, res) => {
     try {
         // En tu imagen las columnas son: id, nombre, id_gerencia
-        const query = 'SELECT id, nombre, id_gerencia FROM departamento ORDER BY nombre';
+        const query = 'SELECT id, nombre, centro_costo, id_gerencia FROM departamento ORDER BY nombre';
         const resDB = await pool.query(query);
         res.json(resDB.rows);
     } catch (err) { 
@@ -493,11 +494,13 @@ app.get('/api/departamentos',verificarSesion, async (req, res) => {
 // 2. GUARDAR NUEVO DEPARTAMENTO
 app.post('/api/departamentos',verificarSesion, async (req, res) => {
     try {
-        const { nombre, centro_costo, id_gerencia } = req.body;
+        let { nombre, centro_costo, id_gerencia } = req.body;
 
         if (!nombre || !centro_costo || !id_gerencia) {
             return res.status(400).send("Faltan campos obligatorios: nombre, centro_costo o id_gerencia");
         }
+
+        centro_costo = String(centro_costo).replace(/\D/g, '');
 
         const query = `
             INSERT INTO departamento (nombre, centro_costo, id_gerencia) 
