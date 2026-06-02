@@ -635,7 +635,8 @@ app.get('/api/auditoria',verificarSesion, async (req, res) => {
     try {
         const query = `
             SELECT 
-                id, operacion, id_equipo, nombre_usuario, fecha,
+                id, operacion, id_equipo, nombre_usuario,
+                fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas' AS fecha,
                 fmo, serial_equipo, marca_equipo, modelo_equipo, clase_equipo, tipo_equipo,
                 campo_modificado, valor_anterior, valor_nuevo
             FROM auditoria
