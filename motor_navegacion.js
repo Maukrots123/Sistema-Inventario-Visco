@@ -393,6 +393,9 @@ function inicializarLogicaPanel() {
     // Gráfica de Barras (Flujo Operativo: 4 estados)
     const ctxBar = document.getElementById('canvas-barras');
     if (ctxBar) {
+        const isDark = document.body.classList.contains('dark-mode');
+        const gridColor = isDark ? '#374151' : '#e2e8f0';
+        const tickColor = isDark ? '#9ca3af' : '#64748b';
         window.chartBarras = new Chart(ctxBar, {
             type: 'bar',
             data: {
@@ -409,9 +412,14 @@ function inicializarLogicaPanel() {
                 responsive: true, 
                 maintainAspectRatio: false,
                 scales: {
+                    x: {
+                        grid: { color: gridColor, lineWidth: 0.5 },
+                        ticks: { color: tickColor }
+                    },
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1, precision: 0 }
+                        grid: { color: gridColor, lineWidth: 0.5 },
+                        ticks: { stepSize: 1, precision: 0, color: tickColor }
                     }
                 },
 
@@ -566,8 +574,6 @@ function cargarFormularioRegistro(contenedor) {
                         </div>
                     </div>
                 </div>
-
-                <div class="seccion-form full-width" style="margin-top:0;">
 
                 <div class="seccion-form full-width">
                     <h3><i class="fa-solid fa-comment-dots"></i> Observaciones</h3>
@@ -2556,9 +2562,11 @@ function generarPDFCompleto() {
 }
 
 function cerrarSesion() {
-    // 1. Limpiamos el almacenamiento local y de sesión
+    // 1. Preservamos modo oscuro y limpiamos el resto
+    const darkMode = localStorage.getItem('darkMode');
     sessionStorage.removeItem('autenticado');
     localStorage.clear();
+    if (darkMode) localStorage.setItem('darkMode', darkMode);
 
     // 2. Avisamos al servidor que destruya la sesión en la base de datos/memoria
     fetch('/api/logout', { method: 'POST' })

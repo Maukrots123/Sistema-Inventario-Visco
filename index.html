@@ -59,10 +59,14 @@
                 <a href="#" onclick="cambiarSeccion('inventario', this)" class="activo"><i class="fa-solid fa-boxes-stacked"></i> Inventario</a>
                 <a href="#" onclick="cambiarSeccion('config', this)"><i class="fa-solid fa-gear"></i> Configuración</a>
             </nav>
+           <button class="btn-dark-mode" onclick="toggleDarkMode()">
+                 <i class="fa-solid fa-moon"></i>
+                 <span id="dark-mode-text">Modo Oscuro</span>
+            </button>
            <button class="boton-salir" href="#" onclick="cambiarSeccion('cerrar_sesion', this)">
-                <i class="fa-solid fa-right-from-bracket"></i> 
-                Cerrar Sesión
-           </button>
+                 <i class="fa-solid fa-right-from-bracket"></i> 
+                 Cerrar Sesión
+            </button>
         </aside>
 
         <main class="area-trabajo">
@@ -84,6 +88,36 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+                const icon = document.querySelector('.btn-dark-mode i');
+                const text = document.getElementById('dark-mode-text');
+                if (icon) icon.className = 'fa-solid fa-sun';
+                if (text) text.textContent = 'Modo Claro';
+            }
+        });
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            const icon = document.querySelector('.btn-dark-mode i');
+            const text = document.getElementById('dark-mode-text');
+            if (icon) icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            if (text) text.textContent = isDark ? 'Modo Claro' : 'Modo Oscuro';
+            if (window.chartBarras) {
+                const c = isDark ? '#374151' : '#e2e8f0';
+                const t = isDark ? '#9ca3af' : '#64748b';
+                window.chartBarras.options.scales.x.grid.color = c;
+                window.chartBarras.options.scales.y.grid.color = c;
+                window.chartBarras.options.scales.x.ticks.color = t;
+                window.chartBarras.options.scales.y.ticks.color = t;
+                window.chartBarras.update();
+            }
+        }
+    </script>
 </body>
 </html>
 

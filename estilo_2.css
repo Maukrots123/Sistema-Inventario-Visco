@@ -1,21 +1,23 @@
 :root {
-    --color-fondo: #bdd9f5;
-    --color-primario: #3498db;
-    --color-texto: #2c3e50;
-    --color-secundario: #95a5a6;
+    --color-fondo: linear-gradient(135deg, #e0e7ff 0%, #f0f4ff 50%, #f8fafc 100%);
+    --color-primario: #3b82f6;
+    --color-texto: #1e293b;
+    --color-secundario: #64748b;
     --blanco: #ffffff;
-    --sombra: 0 10px 30px rgba(0, 0, 0, 0.08);
+    --sombra: 0 20px 60px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.04);
+    --borde: #e2e8f0;
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
 body {
-    background-color: var(--color-fondo);
+    background: linear-gradient(135deg, rgba(224,231,255,0.88) 0%, rgba(240,244,255,0.88) 50%, rgba(248,250,252,0.88) 100%),
+                url('fondo_imagen/imagen_inventario_2.jpg') center/cover fixed;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -25,63 +27,64 @@ body {
 
 .contenedor-login {
     width: 100%;
-    max-width: 420px;
+    max-width: 400px;
     padding: 20px;
 }
 
 .tarjeta-login {
     background: var(--blanco);
-    padding: 40px;
-    border-radius: 25px;
+    padding: 36px 40px;
+    border-radius: 20px;
     box-shadow: var(--sombra);
     text-align: center;
+    border: 1px solid var(--borde);
 }
 
 .encabezado-login {
-    margin-bottom: 30px;
+    margin-bottom: 28px;
 }
 
 .logo-circulo {
-    width: 70px;
-    height: 70px;
-    background: var(--color-primario);
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
     color: white;
-    border-radius: 20px;
+    border-radius: 18px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 2rem;
-    margin: 0 auto 15px;
-    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    font-size: 1.6rem;
+    margin: 0 auto 16px;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
 }
 
 .encabezado-login h1 {
     color: var(--color-texto);
-    font-size: 1.8rem;
-    margin-bottom: 8px;
+    font-size: 1.5rem;
+    margin-bottom: 6px;
+    font-weight: 700;
 }
 
 .encabezado-login p {
     color: var(--color-secundario);
-    font-size: 0.9rem;
-    line-height: 1.4;
+    font-size: 0.88rem;
+    line-height: 1.5;
 }
 
-/* Estilos de Formulario */
 .formulario-acceso {
     text-align: left;
 }
 
 .grupo-entrada {
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .grupo-entrada label {
     display: block;
     color: var(--color-texto);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .campo-icono {
@@ -92,39 +95,46 @@ body {
 
 .campo-icono i {
     position: absolute;
-    left: 15px;
-    color: var(--color-secundario);
+    left: 14px;
+    color: #94a3b8;
+    font-size: 0.9rem;
 }
 
 .campo-icono input {
     width: 100%;
-    padding: 12px 12px 12px 45px;
-    border: 1.5px solid #edf2f7;
-    border-radius: 12px;
+    padding: 12px 14px 12px 42px;
+    border: 1.5px solid var(--borde);
+    border-radius: 10px;
     background: #f8fafc;
     outline: none;
-    transition: all 0.3s;
+    font-size: 0.9rem;
+    color: var(--color-texto);
+    transition: all 0.2s;
 }
 
 .campo-icono input:focus {
     border-color: var(--color-primario);
     background: white;
-    box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+.campo-icono input::placeholder {
+    color: #94a3b8;
 }
 
 .opciones-secundarias {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
-    font-size: 0.8rem;
+    margin-bottom: 22px;
+    font-size: 0.82rem;
 }
 
 .recordarme {
     color: var(--color-secundario);
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     cursor: pointer;
 }
 
@@ -132,29 +142,77 @@ body {
     color: var(--color-primario);
     text-decoration: none;
     font-weight: 600;
+    font-size: 0.82rem;
+}
+
+.olvido-clave:hover {
+    text-decoration: underline;
 }
 
 .boton-entrar {
     width: 100%;
-    padding: 14px;
-    background: var(--color-texto);
+    padding: 13px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
     color: white;
     border: none;
-    border-radius: 12px;
-    font-size: 1rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
 }
 
 .boton-entrar:hover {
-    background: #1a252f;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+.boton-entrar:active {
+    transform: translateY(0);
 }
 
 .pie-login {
-    margin-top: 30px;
+    margin-top: 28px;
     font-size: 0.75rem;
     color: var(--color-secundario);
+}
+
+/* ========== MODO OSCURO LOGIN ========== */
+body.dark-mode {
+    --color-fondo: linear-gradient(135deg, #0a0a14 0%, #0f0f1a 50%, #13132b 100%);
+    --color-primario: #4da6ff;
+    --color-texto: #d1d5db;
+    --color-secundario: #6b7280;
+    --blanco: #13132b;
+    --sombra: 0 20px 60px rgba(0, 0, 0, 0.4);
+    --borde: #1e1e3a;
+    background: linear-gradient(135deg, rgba(10,10,20,0.88) 0%, rgba(15,15,26,0.88) 50%, rgba(19,19,43,0.88) 100%),
+                url('fondo_imagen/imagen_inventario_2.jpg') center/cover fixed;
+}
+
+body.dark-mode .tarjeta-login {
+    border-color: #1e1e3a;
+}
+
+body.dark-mode .campo-icono input {
+    background: #0f0f1a;
+    border-color: #1e1e3a;
+    color: #d1d5db;
+}
+
+body.dark-mode .campo-icono input:focus {
+    background: #0f0f1a;
+    border-color: var(--color-primario);
+}
+
+body.dark-mode .campo-icono i {
+    color: #4b5563;
+}
+
+body.dark-mode .boton-entrar {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+body.dark-mode .boton-entrar:hover {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
 }
