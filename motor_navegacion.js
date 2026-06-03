@@ -2645,15 +2645,19 @@ function ejecutarGeneracionPDF() {
     cerrarModal();
 }
 
+function stripHtml(str) {
+    return str ? str.replace(/<[^>]*>/g, '') : '';
+}
+
 function descargarExcel(html, nombreArchivo) {
     const estilos = `
         <style>
             body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; }
             h1 { color: #1e293b; font-size: 20px; margin-bottom: 5px; }
             .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; }
-            table { border-collapse: collapse; width: 100%; font-size: 11px; }
-            th { background: #1e293b; color: #fff; padding: 10px 8px; font-weight: 600; text-align: center; border: 1px solid #1e293b; }
-            td { padding: 7px 8px; border: 1px solid #e2e8f0; text-align: center; color: #334155; }
+            table { border-collapse: collapse; font-size: 11px; }
+            th { background: #1e293b; color: #fff; padding: 10px 8px; font-weight: 600; text-align: center; border: 1px solid #1e293b; white-space: nowrap; }
+            td { padding: 7px 8px; border: 1px solid #e2e8f0; text-align: center; color: #334155; white-space: nowrap; }
             tr:nth-child(even) { background: #f8fafc; }
             tr:hover { background: #eef2ff; }
             .footer { margin-top: 15px; font-size: 10px; color: #94a3b8; text-align: right; }
@@ -3000,34 +3004,47 @@ function generarPDFAuditoriaDesdeData(data) {
 
     const body = data.map((item, i) => {
         const opLabel = item.operacion === 'INSERT' ? 'Registro' : item.operacion === 'UPDATE' ? 'Modificación' : item.operacion === 'DELETE' ? 'Eliminación' : item.operacion;
-        const esCatalogo = !item.id_equipo && item.campo_modificado;
+        const campo = stripHtml(item.campo_modificado);
+        const vAnterior = stripHtml(item.valor_anterior);
+        const vNuevo = stripHtml(item.valor_nuevo);
+        const esCatalogo = !item.id_equipo && campo;
         let equipo = '';
         let detalle = '';
 
         if (esCatalogo) {
-            equipo = `Catálogo: ${item.campo_modificado}`;
+            equipo = `Catálogo: ${campo}`;
             switch (item.operacion) {
-                case 'INSERT': detalle = `Creado: ${item.valor_nuevo || ''}`; break;
-                case 'DELETE': detalle = `Eliminado: ${item.valor_anterior || ''}`; break;
-                case 'UPDATE': detalle = `${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`; break;
-                default: detalle = item.valor_nuevo || '';
+                case 'INSERT': detalle = `Creado: ${vNuevo || ''}`; break;
+                case 'DELETE': detalle = `Eliminado: ${vAnterior || ''}`; break;
+                case 'UPDATE': detalle = `'${vAnterior || ''}' -> '${vNuevo || ''}'`; break;
+                default: detalle = vNuevo || '';
             }
+        } else if (item.operacion === 'INSERT') {
+            const eqPartes = [];
+            if (item.clase_equipo) eqPartes.push(item.clase_equipo);
+            if (item.tipo_equipo) eqPartes.push(item.tipo_equipo);
+            if (item.marca_equipo) eqPartes.push(item.marca_equipo);
+            if (item.modelo_equipo) eqPartes.push(item.modelo_equipo);
+            detalle = `Creado: ${eqPartes.join(' ')}`;
+        } else if (item.operacion === 'DELETE') {
+            const eqPartes = [];
+            if (item.clase_equipo) eqPartes.push(item.clase_equipo);
+            if (item.tipo_equipo) eqPartes.push(item.tipo_equipo);
+            if (item.marca_equipo) eqPartes.push(item.marca_equipo);
+            if (item.modelo_equipo) eqPartes.push(item.modelo_equipo);
+            detalle = `Eliminado: ${eqPartes.join(' ')}`;
+        } else if (campo) {
+            detalle = `${campo}: '${vAnterior || ''}' -> '${vNuevo || ''}'`;
+        } else if (vNuevo) {
+            detalle = vNuevo;
         } else {
-            const partes = [];
-            if (item.fmo) partes.push(`FMO: ${item.fmo}`);
-            if (item.serial_equipo) partes.push(`Serial: ${item.serial_equipo}`);
-            equipo = partes.join(' - ');
-
-            if (item.operacion === 'INSERT') {
-                detalle = `Creado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
-            } else if (item.operacion === 'DELETE') {
-                detalle = `Eliminado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
-            } else if (item.campo_modificado) {
-                detalle = `${item.campo_modificado}: ${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`;
-            } else {
-                detalle = 'Actualizado';
-            }
+            detalle = 'Actualizado';
         }
+
+        const partes = [];
+        if (item.fmo) partes.push(`FMO: ${item.fmo}`);
+        if (item.serial_equipo) partes.push(`Serial: ${item.serial_equipo}`);
+        equipo = partes.join(' - ');
 
         return [
             i + 1,
@@ -3081,28 +3098,47 @@ function generarExcelAuditoria(soloFiltrados) {
             let filas = '';
             data.forEach((item, i) => {
                 const opLabel = item.operacion === 'INSERT' ? 'Registro' : item.operacion === 'UPDATE' ? 'Modificación' : item.operacion === 'DELETE' ? 'Eliminación' : item.operacion;
-                const badgeColor = item.operacion === 'INSERT' ? '#2ecc71' : item.operacion === 'DELETE' ? '#e74c3c' : item.operacion === 'UPDATE' ? '#f39c12' : '#95a5a6';
-                const esCatalogo = !item.id_equipo && item.campo_modificado;
+                const campo = stripHtml(item.campo_modificado);
+                const vAnterior = stripHtml(item.valor_anterior);
+                const vNuevo = stripHtml(item.valor_nuevo);
+                const esCatalogo = !item.id_equipo && campo;
                 let equipo = '', detalle = '';
                 if (esCatalogo) {
-                    equipo = `Catálogo: ${item.campo_modificado}`;
+                    equipo = `Catálogo: ${campo}`;
                     switch (item.operacion) {
-                        case 'INSERT': detalle = `Creado: ${item.valor_nuevo || ''}`; break;
-                        case 'DELETE': detalle = `Eliminado: ${item.valor_anterior || ''}`; break;
-                        case 'UPDATE': detalle = `${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`; break;
-                        default: detalle = item.valor_nuevo || '';
+                        case 'INSERT': detalle = `Creado: ${vNuevo || ''}`; break;
+                        case 'DELETE': detalle = `Eliminado: ${vAnterior || ''}`; break;
+                        case 'UPDATE': detalle = `'${vAnterior || ''}' → '${vNuevo || ''}'`; break;
+                        default: detalle = vNuevo || '';
                     }
+                } else if (item.operacion === 'INSERT') {
+                    const eqPartes = [];
+                    if (item.clase_equipo) eqPartes.push(item.clase_equipo);
+                    if (item.tipo_equipo) eqPartes.push(item.tipo_equipo);
+                    if (item.marca_equipo) eqPartes.push(item.marca_equipo);
+                    if (item.modelo_equipo) eqPartes.push(item.modelo_equipo);
+                    detalle = `Creado: ${eqPartes.join(' ')}`;
+                } else if (item.operacion === 'DELETE') {
+                    const eqPartes = [];
+                    if (item.clase_equipo) eqPartes.push(item.clase_equipo);
+                    if (item.tipo_equipo) eqPartes.push(item.tipo_equipo);
+                    if (item.marca_equipo) eqPartes.push(item.marca_equipo);
+                    if (item.modelo_equipo) eqPartes.push(item.modelo_equipo);
+                    detalle = `Eliminado: ${eqPartes.join(' ')}`;
+                } else if (campo) {
+                    detalle = `${campo}: '${vAnterior || ''}' → '${vNuevo || ''}'`;
+                } else if (vNuevo) {
+                    detalle = vNuevo;
                 } else {
+                    detalle = 'Actualizado';
+                }
+                if (!esCatalogo) {
                     const partes = [];
                     if (item.fmo) partes.push(`FMO: ${item.fmo}`);
                     if (item.serial_equipo) partes.push(`Serial: ${item.serial_equipo}`);
                     equipo = partes.join(' - ');
-                    if (item.operacion === 'INSERT') detalle = `Creado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
-                    else if (item.operacion === 'DELETE') detalle = `Eliminado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
-                    else if (item.campo_modificado) detalle = `${item.campo_modificado}: ${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`;
-                    else detalle = 'Actualizado';
                 }
-                filas += `<tr><td>${i+1}</td><td>${item.nombre_usuario || 'N/A'}</td><td>${new Date(item.fecha).toLocaleString()}</td><td><span style="display:inline-block;background:${badgeColor};color:#fff;padding:2px 10px;border-radius:10px;font-weight:600;">${opLabel}</span></td><td>${equipo}</td><td>${detalle}</td></tr>`;
+                filas += `<tr><td>${i+1}</td><td>${item.nombre_usuario || 'N/A'}</td><td style="white-space:nowrap">${new Date(item.fecha).toLocaleString()}</td><td>${opLabel}</td><td>${equipo}</td><td style="white-space:normal;word-break:break-word;max-width:600px">${detalle}</td></tr>`;
             });
             const html = `
                 <h1>REPORTE DE AUDITORÍA</h1>
