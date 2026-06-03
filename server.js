@@ -133,7 +133,7 @@ app.get('/', (req, res) => {
 
 app.post('/api/registrar-usuario', verificarSesion, async (req, res) => {
     // Nota: Ahora recibimos 'username' del form, pero lo guardamos en 'usuario_nombre'
-    const { username, password, cedula, nombre_real, apellido, rol } = req.body;
+    const { username, password, cedula, nombre_real, apellido, rol, ficha } = req.body;
 
     try {
         const saltRounds = 10;
@@ -141,12 +141,12 @@ app.post('/api/registrar-usuario', verificarSesion, async (req, res) => {
         
         // Insertamos: 'nombre' es nombre real, 'usuario_nombre' es el login
         const query = `
-            INSERT INTO usuario (cedula, nombre, apellido, usuario_nombre, clave, rol) 
-            VALUES ($1, $2, $3, $4, $5, $6) 
+            INSERT INTO usuario (cedula, nombre, apellido, usuario_nombre, clave, rol, ficha) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7) 
             RETURNING id
         `;
         
-        const valores = [cedula, nombre_real, apellido, username, hashedPassword, rol || 'usuario'];
+        const valores = [cedula, nombre_real, apellido, username, hashedPassword, rol || 'usuario', ficha || null];
 
         const resultado = await pool.query(query, valores);
             
@@ -563,7 +563,7 @@ app.post('/api/gerencias',verificarSesion, async (req, res) => {
 app.get('/api/responsables',verificarSesion, async (req, res) => {
     try {
         // En tu imagen no existe 'nombre_completo', usamos nombre y apellido
-        const resDB = await pool.query('SELECT id, cedula, nombre, apellido FROM responsable ORDER BY nombre');
+        const resDB = await pool.query('SELECT id, cedula, nombre, apellido, ficha FROM responsable ORDER BY nombre');
         res.json(resDB.rows);
     } catch (err) { 
         console.error("Error en /api/responsables:", err.message);
@@ -574,7 +574,7 @@ app.get('/api/responsables',verificarSesion, async (req, res) => {
 // 4. GUARDAR NUEVO RESPONSABLE
 app.post('/api/responsables',verificarSesion, async (req, res) => {
     try {
-        const { cedula, nombre, apellido, id_departamento } = req.body;
+        const { cedula, nombre, apellido, id_departamento, ficha } = req.body;
 
         // Validamos que los datos requeridos no lleguen vacíos
         if (!cedula || !nombre || !apellido || !id_departamento) {
@@ -582,12 +582,12 @@ app.post('/api/responsables',verificarSesion, async (req, res) => {
         }
 
         const query = `
-            INSERT INTO responsable (cedula, nombre, apellido, id_departamento) 
-            VALUES ($1, $2, $3, $4) 
+            INSERT INTO responsable (cedula, nombre, apellido, id_departamento, ficha) 
+            VALUES ($1, $2, $3, $4, $5) 
             RETURNING id
         `;
         
-        const resultado = await pool.query(query, [cedula, nombre, apellido, id_departamento]);
+        const resultado = await pool.query(query, [cedula, nombre, apellido, id_departamento, ficha || null]);
         await registrarAuditoria('INSERT', null, req.session.usuarioId, {}, 'Responsable', null, `${nombre} ${apellido}`);
         res.status(201).json({ 
             id: resultado.rows[0].id, 
@@ -885,7 +885,7 @@ app.delete('/api/imagenes/:id', verificarSesion, async (req, res) => {
 app.get('/api/usuarios', verificarSesion, async (req, res) => {
     try {
         // Obtenemos los campos clave. Excluimos la clave/password por seguridad.
-        const query = 'SELECT cedula, usuario_nombre, rol FROM usuario ORDER BY usuario_nombre ASC';
+        const query = 'SELECT cedula, usuario_nombre, rol, ficha FROM usuario ORDER BY usuario_nombre ASC';
         const resultado = await pool.query(query);
         res.json(resultado.rows);
     } catch (err) {
@@ -1000,11 +1000,11 @@ app.put('/api/departamentos/:id', verificarSesion, async (req, res) => {
 app.put('/api/responsables/:id', verificarSesion, async (req, res) => {
     try {
         const { id } = req.params;
-        const { cedula, nombre, apellido, id_departamento } = req.body;
+        const { cedula, nombre, apellido, id_departamento, ficha } = req.body;
         const old = await pool.query('SELECT nombre, apellido FROM responsable WHERE id = $1', [id]);
         await pool.query(
-            'UPDATE responsable SET cedula = $1, nombre = $2, apellido = $3, id_departamento = $4 WHERE id = $5', 
-            [cedula, nombre, apellido, id_departamento, id]
+            'UPDATE responsable SET cedula = $1, nombre = $2, apellido = $3, id_departamento = $4, ficha = $5 WHERE id = $6', 
+            [cedula, nombre, apellido, id_departamento, ficha || null, id]
         );
         if (old.rows.length > 0) {
             await registrarAuditoria('UPDATE', null, req.session.usuarioId, {}, 'Responsable', `${old.rows[0].nombre} ${old.rows[0].apellido}`, `${nombre} ${apellido}`);

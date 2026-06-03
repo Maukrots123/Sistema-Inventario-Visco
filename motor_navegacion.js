@@ -191,10 +191,10 @@ function cargarInterfazPanel(contenedor) {
                             </button>
                         </div>
                         <div class="audit-print-actions">
-                            <button onclick="generarPDFAuditoria(false)" class="btn-print-audit" style="background:#3498db;" title="Imprimir todo">
-                                <i class="fa-solid fa-print"></i>
+                            <button onclick="mostrarOpcionExporteAuditoria(false)" class="btn-print-audit" style="background:#3498db;" title="Exportar todo">
+                                <i class="fa-solid fa-download"></i>
                             </button>
-                            <button onclick="generarPDFAuditoria(true)" class="btn-print-audit" style="background:#2ecc71;" title="Imprimir filtrado">
+                            <button onclick="mostrarOpcionExporteAuditoria(true)" class="btn-print-audit" style="background:#2ecc71;" title="Exportar filtrado">
                                 <i class="fa-solid fa-filter"></i>
                             </button>
                         </div>
@@ -738,15 +738,26 @@ async function abrirInterfazRegistro(tipo, data = null) {
             htmlFormulario = `
                 <div class="campo">
                     <label>Cédula</label>
-                    <input type="text" name="cedula" placeholder="V-00000000" required>
+                    <div style="display:flex;gap:6px;align-items:stretch;">
+                        <select id="reg-cedula-prefix" style="width:70px;padding:8px;border:1.5px solid var(--borde);border-radius:8px;font-size:0.85rem;outline:none;color:var(--texto-principal);background:white;" onchange="var h=document.getElementById('reg-cedula');var p=this;var n=document.getElementById('reg-cedula-numero');if(h&&p&&n)h.value=p.value+n.value;">
+                            <option value="V-">V-</option>
+                            <option value="E-">E-</option>
+                        </select>
+                        <input type="text" id="reg-cedula-numero" placeholder="00000000" required style="flex:1;" oninput="this.value=this.value.replace(/\\D/g,'');var h=document.getElementById('reg-cedula');var p=document.getElementById('reg-cedula-prefix');if(h&&p&&this)h.value=p.value+this.value;">
+                        <input type="hidden" id="reg-cedula" name="cedula">
+                    </div>
                 </div>
                 <div class="campo">
                     <label>Nombre</label>
-                    <input type="text" name="nombre" placeholder="Nombre" required>
+                    <input type="text" name="nombre" placeholder="Nombre" required oninput="capitalizarPrimera(this)">
                 </div>
                 <div class="campo">
                     <label>Apellido</label>
-                    <input type="text" name="apellido" placeholder="Apellido" required>
+                    <input type="text" name="apellido" placeholder="Apellido" required oninput="capitalizarPrimera(this)">
+                </div>
+                <div class="campo">
+                    <label>Ficha</label>
+                    <input type="text" name="ficha" placeholder="Código de ficha" oninput="this.value=this.value.replace(/\\D/g,'')">
                 </div>
                 <div class="campo">
                 <label>Departamento</label>
@@ -813,12 +824,16 @@ async function abrirInterfazRegistro(tipo, data = null) {
                     <input type="text" name="username" placeholder="Ej: mau.arismendi" required>
                 </div>
                 <div class="campo">
+                    <label>Ficha</label>
+                    <input type="text" name="ficha" placeholder="Código de ficha" oninput="this.value=this.value.replace(/\\D/g,'')">
+                </div>
+                <div class="campo">
                     <label>Nombre Real</label>
-                    <input type="text" name="nombre_real" placeholder="Ej: Mauricio" required>
+                    <input type="text" name="nombre_real" placeholder="Ej: Mauricio" required oninput="capitalizarPrimera(this)">
                 </div>
                 <div class="campo">
                     <label>Apellido</label>
-                    <input type="text" name="apellido" placeholder="Ej: Arismendi" required>
+                    <input type="text" name="apellido" placeholder="Ej: Arismendi" required oninput="capitalizarPrimera(this)">
                 </div>
                 <div class="campo">
                     <label>Contraseña</label>
@@ -1114,6 +1129,10 @@ document.getElementById('form-maestro-dinamico').onsubmit = async (e) => {
     const formData = new FormData(e.target);
     const datos = Object.fromEntries(formData);
 
+    // Capitalizar nombre y apellido automáticamente
+    if (datos.nombre) datos.nombre = datos.nombre.charAt(0).toUpperCase() + datos.nombre.slice(1).toLowerCase();
+    if (datos.apellido) datos.apellido = datos.apellido.charAt(0).toUpperCase() + datos.apellido.slice(1).toLowerCase();
+
     const partesEndpoint = endpoint.split('/');
     const idLimpio = partesEndpoint.pop() || partesEndpoint.pop(); 
     const metodoSugerido = (!isNaN(idLimpio)) ? 'PUT' : 'POST';
@@ -1210,6 +1229,15 @@ if (tipo === 'responsable' || tipo === 'departamento') {
                 console.error("Error al cargar datos:", err);
                 select.innerHTML = '<option value="">Error al cargar</option>';
             });
+    }
+
+    if (tipo === 'responsable') {
+        setTimeout(() => {
+            const p = document.getElementById('reg-cedula-prefix');
+            const n = document.getElementById('reg-cedula-numero');
+            const h = document.getElementById('reg-cedula');
+            if (p && n && h) h.value = p.value + n.value;
+        }, 50);
     }
 }
 }
@@ -1506,10 +1534,10 @@ async function cargarInventario(contenedor) {
 
                     <div style="display:flex; gap:8px; margin-top:8px;">
                         <button class="btn-reporte-premium" onclick="abrirModal()">
-                            <i class="fa-solid fa-file-pdf"></i> GENERAR REPORTE
+                            <i class="fa-solid fa-file-pdf"></i> REPORTE FILTRADO
                         </button>
-                        <button class="btn-reporte-premium" onclick="generarPDFCompleto()" style="background:#2c3e50;">
-                            <i class="fa-solid fa-file-pdf"></i> REPORTE COMPLETO
+                        <button class="btn-reporte-premium" onclick="mostrarOpcionExporteCompleto()" style="background:#2c3e50;">
+                            <i class="fa-solid fa-download"></i> REPORTE COMPLETO
                         </button>
                     </div>
                 </div>
@@ -1981,7 +2009,12 @@ async function abrirModalEditarCatalogos() {
                             onchange="
                                 const res = window._cacheResponsables.find(r => r.id == this.value);
                                 if(res) {
-                                    document.getElementById('swal-resp-cedula').value = res.cedula || '';
+                                    const ced = res.cedula || '';
+                                    const match = ced.match(/^([VE]-)(\d+)$/i);
+                                    document.getElementById('swal-resp-prefix').value = match ? match[1].toUpperCase() : 'V-';
+                                    document.getElementById('swal-resp-numero').value = match ? match[2] : ced;
+                                    document.getElementById('swal-resp-cedula').value = document.getElementById('swal-resp-prefix').value + document.getElementById('swal-resp-numero').value;
+                                    document.getElementById('swal-resp-ficha').value = res.ficha || '';
                                     document.getElementById('swal-resp-nombre').value = res.nombre || '';
                                     document.getElementById('swal-resp-apellido').value = res.apellido || '';
                                     document.getElementById('swal-resp-dep').value = res.id_departamento || '';
@@ -1994,7 +2027,14 @@ async function abrirModalEditarCatalogos() {
                     
                     <div>
                         <label style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">Cédula:</label>
-                        <input id="swal-resp-cedula" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="V-00000000">
+                        <div style="display:flex;gap:4px;">
+                            <select id="swal-resp-prefix" class="swal2-input" style="width:65px;margin:0;box-sizing:border-box;padding:8px;" onchange="var h=document.getElementById('swal-resp-cedula');if(h)h.value=this.value+document.getElementById('swal-resp-numero').value;">
+                                <option value="V-">V-</option>
+                                <option value="E-">E-</option>
+                            </select>
+                            <input id="swal-resp-numero" class="swal2-input" style="flex:1;margin:0;box-sizing:border-box;" placeholder="00000000" oninput="this.value=this.value.replace(/\\D/g,'');var h=document.getElementById('swal-resp-cedula');if(h)h.value=document.getElementById('swal-resp-prefix').value+this.value;">
+                            <input type="hidden" id="swal-resp-cedula">
+                        </div>
                     </div>
                     <div>
                         <label style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">Departamento:</label>
@@ -2004,12 +2044,16 @@ async function abrirModalEditarCatalogos() {
                         </select>
                     </div>
                     <div>
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">Ficha:</label>
+                        <input id="swal-resp-ficha" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Código de ficha" oninput="this.value=this.value.replace(/\\D/g,'')">
+                    </div>
+                    <div>
                         <label style="font-weight: bold; display: block; margin-bottom: 5px;">Nombre:</label>
-                        <input id="swal-resp-nombre" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Nombre">
+                        <input id="swal-resp-nombre" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Nombre" oninput="capitalizarPrimera(this)">
                     </div>
                     <div>
                         <label style="font-weight: bold; display: block; margin-bottom: 5px;">Apellido:</label>
-                        <input id="swal-resp-apellido" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Apellido">
+                        <input id="swal-resp-apellido" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" placeholder="Apellido" oninput="capitalizarPrimera(this)">
                     </div>
                 </div>
             `;
@@ -2050,11 +2094,15 @@ async function abrirModalEditarCatalogos() {
 
                 if (catalogo === 'responsables') {
                     const cedula = document.getElementById('swal-resp-cedula').value.trim();
-                    const nombre = document.getElementById('swal-resp-nombre').value.trim();
-                    const apellido = document.getElementById('swal-resp-apellido').value.trim();
+                    const nombreRaw = document.getElementById('swal-resp-nombre').value.trim();
+                    const apellidoRaw = document.getElementById('swal-resp-apellido').value.trim();
+                    const ficha = document.getElementById('swal-resp-ficha').value.trim();
+                    const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
+                    const nombre = cap(nombreRaw);
+                    const apellido = cap(apellidoRaw);
                     const id_departamento = document.getElementById('swal-resp-dep').value;
 
-                    if (!cedula && !nombre && !apellido && !id_departamento) {
+                    if (!cedula && !nombre && !apellido && !id_departamento && !ficha) {
                         Swal.showValidationMessage('Debe rellenar al menos un campo para actualizar');
                         return false;
                     }
@@ -2069,7 +2117,8 @@ async function abrirModalEditarCatalogos() {
                             cedula: cedula || original.cedula,
                             nombre: nombre || original.nombre,
                             apellido: apellido || original.apellido,
-                            id_departamento: id_departamento ? parseInt(id_departamento) : original.id_departamento
+                            id_departamento: id_departamento ? parseInt(id_departamento) : original.id_departamento,
+                            ficha: ficha || original.ficha || ''
                         }
                     };
                 } else {
@@ -2596,6 +2645,67 @@ function ejecutarGeneracionPDF() {
     cerrarModal();
 }
 
+function descargarExcel(html, nombreArchivo) {
+    const estilos = `
+        <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; }
+            h1 { color: #1e293b; font-size: 20px; margin-bottom: 5px; }
+            .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; }
+            table { border-collapse: collapse; width: 100%; font-size: 11px; }
+            th { background: #1e293b; color: #fff; padding: 10px 8px; font-weight: 600; text-align: center; border: 1px solid #1e293b; }
+            td { padding: 7px 8px; border: 1px solid #e2e8f0; text-align: center; color: #334155; }
+            tr:nth-child(even) { background: #f8fafc; }
+            tr:hover { background: #eef2ff; }
+            .footer { margin-top: 15px; font-size: 10px; color: #94a3b8; text-align: right; }
+        </style>
+    `;
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">${estilos}</head><body>${html}<div class="footer">Generado el ${new Date().toLocaleString()}</div></body></html>`;
+    const blob = new Blob([fullHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = nombreArchivo.endsWith('.xls') ? nombreArchivo : `${nombreArchivo}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function ejecutarGeneracionExcel() {
+    const selG = document.getElementById('pdf-gerencia');
+    const selD = document.getElementById('pdf-depto');
+    
+    if(!selG.value || !selD.value) return Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione ambos campos'
+    });
+
+    const nomG = selG.options[selG.selectedIndex].text.toUpperCase();
+    const nomD = selD.options[selD.selectedIndex].text.toUpperCase();
+    
+    const filtrados = todosLosEquipos.filter(e => e.gerencia.toUpperCase() === nomG && e.departamento.toUpperCase() === nomD);
+
+    if (!filtrados.length) {
+        return Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay equipos para los filtros seleccionados.' });
+    }
+
+    let filas = '';
+    filtrados.forEach((e, i) => {
+        filas += `<tr><td>${i+1}</td><td>${e.clase || ''}</td><td>${e.tipo || ''}</td><td>${e.fmo || ''}</td><td>${e.serial || ''}</td><td>${e.marca || ''}</td><td>${e.modelo || ''}</td><td>${e.estado || ''}</td><td>${e.gerencia || ''}</td><td>${e.departamento || ''}</td><td>${e.centro_costo || ''}</td><td>${e.asignado || ''}</td></tr>`;
+    });
+
+    const html = `
+        <h1>REPORTE DE INVENTARIO</h1>
+        <div class="subtitle">${nomD} — ${nomG} | Total: ${filtrados.length} equipos</div>
+        <table>
+            <thead><tr><th>N</th><th>Clase</th><th>Tipo</th><th>FMO</th><th>Serial</th><th>Marca</th><th>Modelo</th><th>Estado</th><th>Gerencia</th><th>Departamento</th><th>C. Costo</th><th>Responsable</th></tr></thead>
+            <tbody>${filas}</tbody>
+        </table>`;
+
+    descargarExcel(html, `Reporte_${nomD}.xls`);
+    cerrarModal();
+    Swal.fire({ icon: 'success', title: 'Exportado', text: 'Archivo Excel generado.', timer: 2000, showConfirmButton: false });
+}
+
 function generarPDFCompleto() {
     if (!todosLosEquipos || todosLosEquipos.length === 0) {
         return Swal.fire({
@@ -2638,6 +2748,30 @@ function generarPDFCompleto() {
     Swal.close();
 }
 
+function generarExcelCompleto() {
+    if (!todosLosEquipos || todosLosEquipos.length === 0) {
+        return Swal.fire({ icon: 'warning', title: 'Sin datos', text: 'No hay equipos registrados.' });
+    }
+    Swal.fire({ title: 'Generando Excel...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    let filas = '';
+    todosLosEquipos.forEach((e, i) => {
+        filas += `<tr><td>${i+1}</td><td>${e.clase || ''}</td><td>${e.tipo || ''}</td><td>${e.fmo || ''}</td><td>${e.serial || ''}</td><td>${e.marca || ''}</td><td>${e.modelo || ''}</td><td>${e.estado || ''}</td><td>${e.gerencia || ''}</td><td>${e.departamento || ''}</td><td>${e.centro_costo || ''}</td><td>${e.asignado || ''}</td></tr>`;
+    });
+
+    const html = `
+        <h1>REPORTE COMPLETO DE INVENTARIO</h1>
+        <div class="subtitle">Total: ${todosLosEquipos.length} equipos registrados</div>
+        <table>
+            <thead><tr><th>N</th><th>Clase</th><th>Tipo</th><th>FMO</th><th>Serial</th><th>Marca</th><th>Modelo</th><th>Estado</th><th>Gerencia</th><th>Departamento</th><th>C. Costo</th><th>Responsable</th></tr></thead>
+            <tbody>${filas}</tbody>
+        </table>`;
+
+    descargarExcel(html, 'Inventario_Completo.xls');
+    Swal.close();
+    Swal.fire({ icon: 'success', title: 'Exportado', text: 'Archivo Excel generado.', timer: 2000, showConfirmButton: false });
+}
+
 async function abrirModalVerCatalogo(tipo) {
     try {
         const etiquetas = { clases: 'Clases', responsables: 'Responsables', gerencias: 'Gerencias', departamentos: 'Departamentos' };
@@ -2649,11 +2783,11 @@ async function abrirModalVerCatalogo(tipo) {
         if (tipo === 'responsables') {
             html += `<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
                 <thead style="background:#3498db;color:#fff;">
-                    <tr><th style="padding:8px;border:1px solid #ddd;">Cédula</th><th style="padding:8px;border:1px solid #ddd;">Nombre</th><th style="padding:8px;border:1px solid #ddd;">Apellido</th></tr>
+                    <tr><th style="padding:8px;border:1px solid #ddd;">Ficha</th><th style="padding:8px;border:1px solid #ddd;">Cédula</th><th style="padding:8px;border:1px solid #ddd;">Nombre</th><th style="padding:8px;border:1px solid #ddd;">Apellido</th></tr>
                 </thead>
                 <tbody>`;
             registros.forEach(r => {
-                html += `<tr><td style="padding:8px;border:1px solid #ddd;">${r.cedula || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.nombre || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.apellido || ''}</td></tr>`;
+                html += `<tr><td style="padding:8px;border:1px solid #ddd;">${r.ficha || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.cedula || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.nombre || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.apellido || ''}</td></tr>`;
             });
             html += '</tbody></table>';
         } else if (tipo === 'departamentos') {
@@ -2706,12 +2840,12 @@ async function abrirModalVerUsuarios() {
         } else {
             html = `<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
                 <thead style="background:#2ecc71;color:#fff;">
-                    <tr><th style="padding:8px;border:1px solid #ddd;">Usuario</th><th style="padding:8px;border:1px solid #ddd;">Cédula</th><th style="padding:8px;border:1px solid #ddd;">Rol</th></tr>
+                    <tr><th style="padding:8px;border:1px solid #ddd;">Ficha</th><th style="padding:8px;border:1px solid #ddd;">Usuario</th><th style="padding:8px;border:1px solid #ddd;">Cédula</th><th style="padding:8px;border:1px solid #ddd;">Rol</th></tr>
                 </thead>
                 <tbody>`;
             usuarios.forEach(u => {
                 const rolLabel = u.rol === 'admin' ? 'Administrador' : 'Usuario';
-                html += `<tr><td style="padding:8px;border:1px solid #ddd;">${u.usuario_nombre || ''}</td><td style="padding:8px;border:1px solid #ddd;">${u.cedula || ''}</td><td style="padding:8px;border:1px solid #ddd;">${rolLabel}</td></tr>`;
+                html += `<tr><td style="padding:8px;border:1px solid #ddd;">${u.ficha || ''}</td><td style="padding:8px;border:1px solid #ddd;">${u.usuario_nombre || ''}</td><td style="padding:8px;border:1px solid #ddd;">${u.cedula || ''}</td><td style="padding:8px;border:1px solid #ddd;">${rolLabel}</td></tr>`;
             });
             html += '</tbody></table>';
         }
@@ -2736,7 +2870,56 @@ async function abrirModalVerUsuarios() {
     }
 }
 
-// --- AUDITORÍA PDF ---
+// --- AUDITORÍA PDF / EXCEL ---
+function mostrarOpcionExporteAuditoria(soloFiltrados) {
+    Swal.fire({
+        title: 'Exportar auditoría',
+        html: `<p style="margin-bottom:20px;color:#64748b;">${soloFiltrados ? 'Con los filtros activos' : 'Todos los registros'}</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button id="swal-btn-pdf" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border:none;border-radius:10px;background:#3498db;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s;">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+                <button id="swal-btn-excel" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border:none;border-radius:10px;background:#27ae60;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s;">
+                    <i class="fa-solid fa-file-excel"></i> Excel
+                </button>
+            </div>`,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        cancelButtonColor: '#94a3b8',
+        didOpen: () => {
+            document.getElementById('swal-btn-pdf').addEventListener('click', () => { Swal.close(); generarPDFAuditoria(soloFiltrados); });
+            document.getElementById('swal-btn-excel').addEventListener('click', () => { Swal.close(); generarExcelAuditoria(soloFiltrados); });
+        }
+    });
+}
+
+function mostrarOpcionExporteCompleto() {
+    if (!todosLosEquipos || todosLosEquipos.length === 0) {
+        return Swal.fire({ icon: 'warning', title: 'Sin datos', text: 'No hay equipos registrados en el inventario.' });
+    }
+    Swal.fire({
+        title: 'Exportar inventario completo',
+        html: `<p style="margin-bottom:20px;color:#64748b;">${todosLosEquipos.length} equipos registrados</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button id="swal-btn-pdf" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border:none;border-radius:10px;background:#2c3e50;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s;">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+                <button id="swal-btn-excel" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border:none;border-radius:10px;background:#27ae60;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s;">
+                    <i class="fa-solid fa-file-excel"></i> Excel
+                </button>
+            </div>`,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        cancelButtonColor: '#94a3b8',
+        didOpen: () => {
+            document.getElementById('swal-btn-pdf').addEventListener('click', () => { Swal.close(); generarPDFCompleto(); });
+            document.getElementById('swal-btn-excel').addEventListener('click', () => { Swal.close(); generarExcelCompleto(); });
+        }
+    });
+}
+
 function generarPDFAuditoria(soloFiltrados) {
     const filas = document.querySelectorAll('#body-auditoria tr');
     if (!filas.length || (filas.length === 1 && filas[0].classList.contains('empty-state'))) {
@@ -2876,6 +3059,64 @@ function generarPDFAuditoriaDesdeData(data) {
     doc.save(`Reporte_Auditoria_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
+function generarExcelAuditoria(soloFiltrados) {
+    const fechaInicio = document.getElementById('fecha-inicio').value || (() => { const d = new Date(); d.setDate(d.getDate() - 365); return d.toISOString().split('T')[0]; })();
+    const fechaFin = document.getElementById('fecha-fin').value || new Date().toISOString().split('T')[0];
+    const operacion = soloFiltrados ? document.getElementById('audit-filter-operacion').value : '';
+    const usuario = soloFiltrados ? document.getElementById('audit-filter-usuario').value : '';
+    const search = soloFiltrados ? document.getElementById('audit-search-input').value.trim() : '';
+
+    let url = `/api/auditoria?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+    if (operacion) url += `&operacion=${encodeURIComponent(operacion)}`;
+    if (usuario) url += `&usuario=${encodeURIComponent(usuario)}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    Swal.fire({ title: 'Generando Excel...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            Swal.close();
+            if (!data.length) return Swal.fire({ icon: 'info', title: 'Sin resultados', text: 'No hay datos para exportar.' });
+            let filas = '';
+            data.forEach((item, i) => {
+                const opLabel = item.operacion === 'INSERT' ? 'Registro' : item.operacion === 'UPDATE' ? 'Modificación' : item.operacion === 'DELETE' ? 'Eliminación' : item.operacion;
+                const badgeColor = item.operacion === 'INSERT' ? '#2ecc71' : item.operacion === 'DELETE' ? '#e74c3c' : item.operacion === 'UPDATE' ? '#f39c12' : '#95a5a6';
+                const esCatalogo = !item.id_equipo && item.campo_modificado;
+                let equipo = '', detalle = '';
+                if (esCatalogo) {
+                    equipo = `Catálogo: ${item.campo_modificado}`;
+                    switch (item.operacion) {
+                        case 'INSERT': detalle = `Creado: ${item.valor_nuevo || ''}`; break;
+                        case 'DELETE': detalle = `Eliminado: ${item.valor_anterior || ''}`; break;
+                        case 'UPDATE': detalle = `${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`; break;
+                        default: detalle = item.valor_nuevo || '';
+                    }
+                } else {
+                    const partes = [];
+                    if (item.fmo) partes.push(`FMO: ${item.fmo}`);
+                    if (item.serial_equipo) partes.push(`Serial: ${item.serial_equipo}`);
+                    equipo = partes.join(' - ');
+                    if (item.operacion === 'INSERT') detalle = `Creado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
+                    else if (item.operacion === 'DELETE') detalle = `Eliminado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
+                    else if (item.campo_modificado) detalle = `${item.campo_modificado}: ${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`;
+                    else detalle = 'Actualizado';
+                }
+                filas += `<tr><td>${i+1}</td><td>${item.nombre_usuario || 'N/A'}</td><td>${new Date(item.fecha).toLocaleString()}</td><td><span style="display:inline-block;background:${badgeColor};color:#fff;padding:2px 10px;border-radius:10px;font-weight:600;">${opLabel}</span></td><td>${equipo}</td><td>${detalle}</td></tr>`;
+            });
+            const html = `
+                <h1>REPORTE DE AUDITORÍA</h1>
+                <div class="subtitle">Total: ${data.length} movimientos</div>
+                <table>
+                    <thead><tr><th>N</th><th>Usuario</th><th>Fecha</th><th>Operación</th><th>Equipo</th><th>Detalle</th></tr></thead>
+                    <tbody>${filas}</tbody>
+                </table>`;
+            descargarExcel(html, `Auditoria_${new Date().toISOString().split('T')[0]}.xls`);
+            Swal.fire({ icon: 'success', title: 'Exportado', text: 'Archivo Excel generado.', timer: 2000, showConfirmButton: false });
+        })
+        .catch(() => { Swal.close(); Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron obtener los datos.' }); });
+}
+
 // Cargar usuarios en el filtro de auditoría al iniciar
 setTimeout(() => {
     const selUser = document.getElementById('audit-filter-usuario');
@@ -2896,6 +3137,16 @@ setTimeout(() => {
         });
     }
 }, 500);
+
+function capitalizarPrimera(input) {
+    if (!input || !input.value) return;
+    const palabras = input.value.split(' ');
+    const capitalizadas = palabras.map(p => {
+        if (!p) return '';
+        return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+    });
+    input.value = capitalizadas.join(' ');
+}
 
 function cerrarSesion() {
     // 1. Preservamos modo oscuro y limpiamos el resto

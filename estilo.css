@@ -1150,15 +1150,47 @@ canvas {
     z-index: 1000;
 }
 .modal-contenido {
-    background: white; padding: 30px; border-radius: 15px; width: 400px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;
+    background: white; padding: 40px; border-radius: 18px; width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2); text-align: center;
+}
+.modal-contenido h3 {
+    font-size: 1.25rem; font-weight: 700; margin-bottom: 25px; color: var(--texto-principal);
 }
 .modal-contenido select {
-    width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc;
+    width: 100%; padding: 12px 14px; margin: 10px 0; border-radius: 10px;
+    border: 1.5px solid var(--borde); font-size: 0.9rem; color: var(--texto-principal);
+    background: #fff; outline: none; cursor: pointer;
 }
-.modal-acciones { display: flex; gap: 10px; margin-top: 20px; }
-.btn-confirmar { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; flex: 1; }
-.btn-cancelar { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; flex: 1; }
+.modal-contenido select:focus {
+    border-color: var(--color-acento);
+}
+.modal-acciones {
+    display: flex; gap: 14px; margin-top: 28px; justify-content: center;
+}
+.btn-confirmar {
+    background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none;
+    padding: 14px 28px; border-radius: 10px; cursor: pointer; flex: 1;
+    font-size: 0.95rem; font-weight: 600; transition: all 0.2s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-confirmar:hover {
+    transform: translateY(-1px); box-shadow: 0 4px 15px rgba(52,152,219,0.3);
+}
+.btn-cancelar {
+    background: #e74c3c; color: white; border: none;
+    padding: 14px 28px; border-radius: 10px; cursor: pointer; flex: 1;
+    font-size: 0.95rem; font-weight: 600; transition: all 0.2s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-cancelar:hover {
+    transform: translateY(-1px); box-shadow: 0 4px 15px rgba(231,76,60,0.3);
+}
+.btn-excel {
+    background: linear-gradient(135deg, #27ae60, #1e8449) !important;
+}
+.btn-excel:hover {
+    box-shadow: 0 4px 15px rgba(39,174,96,0.3) !important;
+}
 
 
 
@@ -1672,7 +1704,17 @@ body.dark-mode .btn-guardar-maestro {
 }
 
 body.dark-mode .btn-confirmar {
-    background: #27ae60;
+    background: linear-gradient(135deg, #2980b9, #2471a3);
+    color: #fff;
+}
+
+body.dark-mode .btn-cancelar {
+    background: #c0392b;
+    color: #fff;
+}
+
+body.dark-mode .btn-excel {
+    background: linear-gradient(135deg, #1e8449, #19692e) !important;
 }
 
 body.dark-mode .modal-contenido select {
