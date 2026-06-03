@@ -588,6 +588,18 @@ textarea[name="observaciones"] {
     border-color: #cbd5e1;
 }
 
+.btn-dash-action.info {
+    background: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #c7d2fe;
+}
+
+.btn-dash-action.info:hover {
+    background: #e0e7ff;
+    border-color: #a5b4fc;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
+}
+
 .btn-dash-action i {
     width: 18px;
     text-align: center;
@@ -699,6 +711,76 @@ textarea[name="observaciones"] {
 
 .btn-search-audit:hover {
     background-color: #2563eb;
+}
+
+.audit-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 15px 0;
+    align-items: center;
+}
+
+.audit-search-row {
+    display: flex;
+    flex: 1;
+    min-width: 220px;
+}
+
+.audit-search-input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1.5px solid var(--borde);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    font-size: 0.85rem;
+    outline: none;
+    color: var(--texto-principal);
+    background: #fff;
+}
+
+.audit-search-input:focus {
+    border-color: var(--color-acento);
+}
+
+.audit-filter-selects {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.audit-filter-selects select {
+    padding: 8px 12px;
+    border: 1.5px solid var(--borde);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    outline: none;
+    color: var(--texto-principal);
+    background: #fff;
+    cursor: pointer;
+}
+
+.audit-filter-selects select:focus {
+    border-color: var(--color-acento);
+}
+
+.audit-print-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-print-audit {
+    color: white;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: opacity 0.2s;
+}
+
+.btn-print-audit:hover {
+    opacity: 0.85;
 }
 
 .audit-table-wrapper {
@@ -1451,6 +1533,17 @@ body.dark-mode .btn-dash-action.alt {
     border-color: #2a2a4a;
 }
 
+body.dark-mode .btn-dash-action.info {
+    background: #1a1a3a;
+    color: #8b8aff;
+    border: 1px solid #2d2d5a;
+}
+
+body.dark-mode .btn-dash-action.info:hover {
+    background: #22224a;
+    border-color: #4f46e5;
+}
+
 body.dark-mode .btn-mini {
     background-color: #1e1e3a !important;
 }
@@ -1509,6 +1602,18 @@ body.dark-mode .btn-search-audit {
 
 body.dark-mode .btn-search-audit:hover {
     background: #2563eb;
+}
+
+body.dark-mode .audit-search-input {
+    background: #1e1e3a;
+    border-color: #2a2a4a;
+    color: #d1d5db;
+}
+
+body.dark-mode .audit-filter-selects select {
+    background: #1e1e3a;
+    border-color: #2a2a4a;
+    color: #d1d5db;
 }
 
 body.dark-mode .modern-table th {

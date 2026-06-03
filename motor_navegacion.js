@@ -141,6 +141,31 @@ function cargarInterfazPanel(contenedor) {
                         <i class="fa-solid fa-sitemap"></i> Nuevo Departamento
                     </button>
                     
+                    <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--borde); opacity: 0.5;">
+                    <p style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--texto-secundario); margin: 0 0 10px 0;">
+                        <i class="fa-solid fa-eye"></i> Visualizar Catálogos
+                    </p>
+                    
+                    <button onclick="abrirModalVerCatalogo('clases')" class="btn-dash-action info">
+                        <i class="fa-solid fa-list"></i> Ver Clases
+                    </button>
+                    
+                    <button onclick="abrirModalVerCatalogo('responsables')" class="btn-dash-action info">
+                        <i class="fa-solid fa-list"></i> Ver Responsables
+                    </button>
+                    
+                    <button onclick="abrirModalVerCatalogo('gerencias')" class="btn-dash-action info">
+                        <i class="fa-solid fa-list"></i> Ver Gerencias
+                    </button>
+                    
+                    <button onclick="abrirModalVerCatalogo('departamentos')" class="btn-dash-action info">
+                        <i class="fa-solid fa-list"></i> Ver Departamentos
+                    </button>
+                    
+                    <button onclick="String(window.usuarioRol).toLowerCase() === 'admin' ? abrirModalVerUsuarios() : Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'Solo administradores pueden ver la lista de usuarios.', confirmButtonColor: '#e74c3c' })" class="btn-dash-action info">
+                        <i class="fa-solid fa-users"></i> Ver Usuarios
+                    </button>
+                    
                     
                 </div>
             </div>
@@ -165,6 +190,34 @@ function cargarInterfazPanel(contenedor) {
                                 <i class="fa-solid fa-magnifying-glass"></i>
                             </button>
                         </div>
+                        <div class="audit-print-actions">
+                            <button onclick="generarPDFAuditoria(false)" class="btn-print-audit" style="background:#3498db;" title="Imprimir todo">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                            <button onclick="generarPDFAuditoria(true)" class="btn-print-audit" style="background:#2ecc71;" title="Imprimir filtrado">
+                                <i class="fa-solid fa-filter"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="audit-filter-bar">
+                    <div class="audit-search-row">
+                        <input type="text" id="audit-search-input" placeholder="Buscar por equipo, usuario o acción..." class="audit-search-input">
+                        <button onclick="cargarAuditoriaConFiltros()" class="btn-search-audit" style="border-radius:0 8px 8px 0;height:38px;">
+                            <i class="fa-solid fa-search"></i>
+                        </button>
+                    </div>
+                    <div class="audit-filter-selects">
+                        <select id="audit-filter-operacion" onchange="cargarAuditoriaConFiltros()">
+                            <option value="">Todas las operaciones</option>
+                            <option value="INSERT">Registros</option>
+                            <option value="UPDATE">Modificaciones</option>
+                            <option value="DELETE">Eliminaciones</option>
+                        </select>
+                        <select id="audit-filter-usuario" onchange="cargarAuditoriaConFiltros()">
+                            <option value="">Todos los usuarios</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -193,13 +246,16 @@ function cargarInterfazPanel(contenedor) {
  * Lógica funcional para la Auditoría de Movimientos
  */
 
-// 1. Función genérica para llamar a la API
-async function obtenerDatosAuditoria(fechaInicio, fechaFin) {
+// 1. Función genérica para llamar a la API (con filtros opcionales)
+async function obtenerDatosAuditoria(fechaInicio, fechaFin, operacion = '', usuario = '', search = '') {
     const tbody = document.getElementById('body-auditoria');
     tbody.innerHTML = '<tr><td colspan="5">Cargando datos...</td></tr>';
 
     try {
-        const url = `/api/auditoria?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+        let url = `/api/auditoria?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+        if (operacion) url += `&operacion=${encodeURIComponent(operacion)}`;
+        if (usuario) url += `&usuario=${encodeURIComponent(usuario)}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
         const response = await fetch(url);
         const data = await response.json();
 
@@ -301,10 +357,31 @@ function cargarAuditoria(dias) {
     document.getElementById('fecha-inicio').value = fechaInicio;
     document.getElementById('fecha-fin').value = fechaFin;
 
-    obtenerDatosAuditoria(fechaInicio, fechaFin);
+    obtenerDatosAuditoria(fechaInicio, fechaFin, '', '', '');
 }
 
-// 3. Función para el botón de búsqueda con lupa
+// 3. Función para búsqueda con filtros (operacion, usuario, texto libre)
+async function cargarAuditoriaConFiltros() {
+    const fechaInicio = document.getElementById('fecha-inicio').value;
+    const fechaFin = document.getElementById('fecha-fin').value;
+    const operacion = document.getElementById('audit-filter-operacion').value;
+    const usuario = document.getElementById('audit-filter-usuario').value;
+    const search = document.getElementById('audit-search-input').value.trim();
+
+    if (!fechaInicio || !fechaFin) {
+        const hoy = new Date();
+        const fin = hoy.toISOString().split('T')[0];
+        const inicio = new Date();
+        inicio.setDate(hoy.getDate() - 30);
+        document.getElementById('fecha-inicio').value = inicio.toISOString().split('T')[0];
+        document.getElementById('fecha-fin').value = fin;
+        return cargarAuditoriaConFiltros();
+    }
+
+    await obtenerDatosAuditoria(fechaInicio, fechaFin, operacion, usuario, search);
+}
+
+// 4. Función para el botón "Buscar" con fechas personalizadas
 function consultarFechasPersonalizadas() {
     const inicio = document.getElementById('fecha-inicio').value;
     const fin = document.getElementById('fecha-fin').value;
@@ -318,7 +395,7 @@ function consultarFechasPersonalizadas() {
         return;
     }
     
-    obtenerDatosAuditoria(inicio, fin);
+    obtenerDatosAuditoria(inicio, fin, '', '', '');
 }
 
 /**
@@ -2560,6 +2637,265 @@ function generarPDFCompleto() {
 
     Swal.close();
 }
+
+async function abrirModalVerCatalogo(tipo) {
+    try {
+        const etiquetas = { clases: 'Clases', responsables: 'Responsables', gerencias: 'Gerencias', departamentos: 'Departamentos' };
+        const iconos = { clases: 'fa-layer-group', responsables: 'fa-user-plus', gerencias: 'fa-sitemap', departamentos: 'fa-sitemap' };
+        const respuesta = await fetch(`/api/${tipo}`);
+        if (!respuesta.ok) throw new Error('Error al obtener datos.');
+        const registros = await respuesta.json();
+        let html = '<div style="max-height:400px;overflow-y:auto;">';
+        if (tipo === 'responsables') {
+            html += `<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <thead style="background:#3498db;color:#fff;">
+                    <tr><th style="padding:8px;border:1px solid #ddd;">Cédula</th><th style="padding:8px;border:1px solid #ddd;">Nombre</th><th style="padding:8px;border:1px solid #ddd;">Apellido</th></tr>
+                </thead>
+                <tbody>`;
+            registros.forEach(r => {
+                html += `<tr><td style="padding:8px;border:1px solid #ddd;">${r.cedula || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.nombre || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.apellido || ''}</td></tr>`;
+            });
+            html += '</tbody></table>';
+        } else if (tipo === 'departamentos') {
+            html += `<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <thead style="background:#3498db;color:#fff;">
+                    <tr><th style="padding:8px;border:1px solid #ddd;">Nombre</th><th style="padding:8px;border:1px solid #ddd;">Centro de Costo</th></tr>
+                </thead>
+                <tbody>`;
+            registros.forEach(r => {
+                html += `<tr><td style="padding:8px;border:1px solid #ddd;">${r.nombre || ''}</td><td style="padding:8px;border:1px solid #ddd;">${r.centro_costo || ''}</td></tr>`;
+            });
+            html += '</tbody></table>';
+        } else {
+            html += '<ul style="list-style:none;padding:0;margin:0;">';
+            registros.forEach(r => {
+                html += `<li style="padding:8px 10px;border-bottom:1px solid #eee;">${r.nombre || ''}</li>`;
+            });
+            html += '</ul>';
+        }
+        html += '</div>';
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay-sistema active';
+        overlay.innerHTML = `
+            <div class="modal-content-sistema">
+                <div class="modal-header-sistema">
+                    <h3><i class="fa-solid ${iconos[tipo] || 'fa-list'}"></i> ${etiquetas[tipo] || tipo}</h3>
+                    <button type="button" class="btn-cerrar-top" onclick="this.closest('.modal-overlay-sistema').remove()">&times;</button>
+                </div>
+                <div class="form-modal-body" style="padding:20px;">
+                    ${registros.length === 0 ? '<p style="text-align:center;color:#94a3b8;">No hay registros.</p>' : html}
+                    <div class="modal-footer-sistema" style="margin-top:15px;">
+                        <button type="button" onclick="this.closest('.modal-overlay-sistema').remove()" class="btn-cancelar">Cerrar</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+    } catch (err) {
+        Swal.fire('Error', 'No se pudieron cargar los datos.', 'error');
+    }
+}
+
+async function abrirModalVerUsuarios() {
+    try {
+        const respuesta = await fetch('/api/usuarios');
+        if (!respuesta.ok) throw new Error('Error al obtener usuarios.');
+        const usuarios = await respuesta.json();
+        let html = '';
+        if (usuarios.length === 0) {
+            html = '<p style="text-align:center;color:#94a3b8;">No hay usuarios registrados.</p>';
+        } else {
+            html = `<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <thead style="background:#2ecc71;color:#fff;">
+                    <tr><th style="padding:8px;border:1px solid #ddd;">Usuario</th><th style="padding:8px;border:1px solid #ddd;">Cédula</th><th style="padding:8px;border:1px solid #ddd;">Rol</th></tr>
+                </thead>
+                <tbody>`;
+            usuarios.forEach(u => {
+                const rolLabel = u.rol === 'admin' ? 'Administrador' : 'Usuario';
+                html += `<tr><td style="padding:8px;border:1px solid #ddd;">${u.usuario_nombre || ''}</td><td style="padding:8px;border:1px solid #ddd;">${u.cedula || ''}</td><td style="padding:8px;border:1px solid #ddd;">${rolLabel}</td></tr>`;
+            });
+            html += '</tbody></table>';
+        }
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay-sistema active';
+        overlay.innerHTML = `
+            <div class="modal-content-sistema">
+                <div class="modal-header-sistema">
+                    <h3><i class="fa-solid fa-users"></i> Usuarios del Sistema</h3>
+                    <button type="button" class="btn-cerrar-top" onclick="this.closest('.modal-overlay-sistema').remove()">&times;</button>
+                </div>
+                <div class="form-modal-body" style="padding:20px;">
+                    ${html}
+                    <div class="modal-footer-sistema" style="margin-top:15px;">
+                        <button type="button" onclick="this.closest('.modal-overlay-sistema').remove()" class="btn-cancelar">Cerrar</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+    } catch (err) {
+        Swal.fire('Error', 'No se pudo cargar la lista de usuarios.', 'error');
+    }
+}
+
+// --- AUDITORÍA PDF ---
+function generarPDFAuditoria(soloFiltrados) {
+    const filas = document.querySelectorAll('#body-auditoria tr');
+    if (!filas.length || (filas.length === 1 && filas[0].classList.contains('empty-state'))) {
+        return Swal.fire({ icon: 'warning', title: 'Sin datos', text: 'No hay registros de auditoría para imprimir.' });
+    }
+
+    const items = [];
+    const esCatalogoRow = (item) => !item.id_equipo && item.campo_modificado;
+
+    if (soloFiltrados) {
+        const operacion = document.getElementById('audit-filter-operacion').value;
+        const usuario = document.getElementById('audit-filter-usuario').value;
+        const search = document.getElementById('audit-search-input').value.trim();
+
+        Swal.fire({
+            title: 'Generando reporte filtrado...',
+            text: 'Procesando auditoría con filtros activos',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const fechaInicio = document.getElementById('fecha-inicio').value;
+        const fechaFin = document.getElementById('fecha-fin').value;
+        let url = `/api/auditoria?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+        if (operacion) url += `&operacion=${encodeURIComponent(operacion)}`;
+        if (usuario) url += `&usuario=${encodeURIComponent(usuario)}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                Swal.close();
+                if (!data.length) {
+                    return Swal.fire({ icon: 'info', title: 'Sin resultados', text: 'No hay datos con los filtros seleccionados.' });
+                }
+                generarPDFAuditoriaDesdeData(data);
+            })
+            .catch(() => {
+                Swal.close();
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron obtener los datos.' });
+            });
+    } else {
+        Swal.fire({
+            title: 'Generando reporte completo...',
+            text: 'Procesando todos los registros visibles',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const fechaInicio = document.getElementById('fecha-inicio').value || (() => { const d = new Date(); d.setDate(d.getDate() - 365); return d.toISOString().split('T')[0]; })();
+        const fechaFin = document.getElementById('fecha-fin').value || new Date().toISOString().split('T')[0];
+
+        fetch(`/api/auditoria?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&limit=1000`)
+            .then(r => r.json())
+            .then(data => {
+                Swal.close();
+                if (!data.length) {
+                    return Swal.fire({ icon: 'info', title: 'Sin resultados', text: 'No hay registros de auditoría en el rango.' });
+                }
+                generarPDFAuditoriaDesdeData(data);
+            })
+            .catch(() => {
+                Swal.close();
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron obtener los datos.' });
+            });
+    }
+}
+
+function generarPDFAuditoriaDesdeData(data) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+
+    doc.setFontSize(14);
+    doc.text("REPORTE DE AUDITORÍA", 148, 15, { align: "center" });
+    doc.setFontSize(10);
+    doc.text(`Generado: ${new Date().toLocaleString()}`, 148, 22, { align: "center" });
+    doc.text(`Total de movimientos: ${data.length}`, 148, 28, { align: "center" });
+
+    const body = data.map((item, i) => {
+        const opLabel = item.operacion === 'INSERT' ? 'Registro' : item.operacion === 'UPDATE' ? 'Modificación' : item.operacion === 'DELETE' ? 'Eliminación' : item.operacion;
+        const esCatalogo = !item.id_equipo && item.campo_modificado;
+        let equipo = '';
+        let detalle = '';
+
+        if (esCatalogo) {
+            equipo = `Catálogo: ${item.campo_modificado}`;
+            switch (item.operacion) {
+                case 'INSERT': detalle = `Creado: ${item.valor_nuevo || ''}`; break;
+                case 'DELETE': detalle = `Eliminado: ${item.valor_anterior || ''}`; break;
+                case 'UPDATE': detalle = `${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`; break;
+                default: detalle = item.valor_nuevo || '';
+            }
+        } else {
+            const partes = [];
+            if (item.fmo) partes.push(`FMO: ${item.fmo}`);
+            if (item.serial_equipo) partes.push(`Serial: ${item.serial_equipo}`);
+            equipo = partes.join(' - ');
+
+            if (item.operacion === 'INSERT') {
+                detalle = `Creado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
+            } else if (item.operacion === 'DELETE') {
+                detalle = `Eliminado: ${item.clase_equipo || ''} ${item.marca_equipo || ''} ${item.modelo_equipo || ''}`;
+            } else if (item.campo_modificado) {
+                detalle = `${item.campo_modificado}: ${item.valor_anterior || ''} -> ${item.valor_nuevo || ''}`;
+            } else {
+                detalle = 'Actualizado';
+            }
+        }
+
+        return [
+            i + 1,
+            item.nombre_usuario || 'N/A',
+            new Date(item.fecha).toLocaleString(),
+            opLabel,
+            equipo,
+            detalle
+        ];
+    });
+
+    doc.autoTable({
+        startY: 33,
+        head: [["N", "Usuario", "Fecha", "Operación", "Equipo", "Detalle"]],
+        body: body,
+        theme: 'grid',
+        styles: { fontSize: 7 },
+        headStyles: { fontSize: 7 },
+        columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 50 },
+            5: { cellWidth: 'auto' }
+        }
+    });
+
+    doc.save(`Reporte_Auditoria_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Cargar usuarios en el filtro de auditoría al iniciar
+setTimeout(() => {
+    const selUser = document.getElementById('audit-filter-usuario');
+    if (selUser) {
+        fetch('/api/auditoria/usuarios')
+            .then(r => r.json())
+            .then(usuarios => {
+                usuarios.forEach(u => {
+                    selUser.innerHTML += `<option value="${u}">${u}</option>`;
+                });
+            })
+            .catch(() => {});
+    }
+    const searchInput = document.getElementById('audit-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') cargarAuditoriaConFiltros();
+        });
+    }
+}, 500);
 
 function cerrarSesion() {
     // 1. Preservamos modo oscuro y limpiamos el resto

@@ -234,7 +234,7 @@ app.get('/api/equipos',verificarSesion, async (req, res) => {
                 d.centro_costo,
                 g.nombre AS gerencia,
                 r.nombre || ' ' || r.apellido AS asignado,
-                u.nombre AS usuario_modificacion
+                u.usuario_nombre AS usuario_modificacion
             FROM equipo e
             LEFT JOIN clase_equipo c ON e.id_clase = c.id
             LEFT JOIN departamento d ON e.id_departamento = d.id
@@ -630,23 +630,66 @@ app.post('/api/clases',verificarSesion, async (req, res) => {
 });
 
 app.get('/api/auditoria',verificarSesion, async (req, res) => {
-    const { fecha_inicio, fecha_fin } = req.query;
+    const { fecha_inicio, fecha_fin, operacion, usuario, search, limit } = req.query;
 
     try {
-        const query = `
-            SELECT 
-                id, operacion, id_equipo, nombre_usuario,
-                fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas' AS fecha,
-                fmo, serial_equipo, marca_equipo, modelo_equipo, clase_equipo, tipo_equipo,
-                campo_modificado, valor_anterior, valor_nuevo
-            FROM auditoria
-            WHERE fecha::date BETWEEN $1 AND $2 
-            ORDER BY fecha DESC
-        `;
-        const resultado = await pool.query(query, [fecha_inicio, fecha_fin]);
+        let query = `
+        SELECT 
+            id, operacion, id_equipo, nombre_usuario,
+            fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas' AS fecha,
+            fmo, serial_equipo, marca_equipo, modelo_equipo, clase_equipo, tipo_equipo,
+            campo_modificado, valor_anterior, valor_nuevo
+        FROM auditoria
+        WHERE 1=1
+    `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (fecha_inicio && fecha_fin) {
+        query += ` AND fecha::date BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
+        params.push(fecha_inicio, fecha_fin);
+        paramIndex += 2;
+    }
+
+    if (operacion) {
+        query += ` AND operacion = $${paramIndex}`;
+        params.push(operacion);
+        paramIndex++;
+    }
+
+    if (usuario) {
+        query += ` AND nombre_usuario ILIKE $${paramIndex}`;
+        params.push(`%${usuario}%`);
+        paramIndex++;
+    }
+
+    if (search) {
+        query += ` AND (fmo ILIKE $${paramIndex} OR nombre_usuario ILIKE $${paramIndex} OR operacion ILIKE $${paramIndex} OR serial_equipo ILIKE $${paramIndex} OR marca_equipo ILIKE $${paramIndex} OR modelo_equipo ILIKE $${paramIndex} OR clase_equipo ILIKE $${paramIndex} OR campo_modificado ILIKE $${paramIndex})`;
+        params.push(`%${search}%`);
+        paramIndex++;
+    }
+
+    query += ` ORDER BY fecha DESC`;
+
+    if (limit) {
+        query += ` LIMIT ${parseInt(limit)}`;
+    } else {
+        query += ` LIMIT 500`;
+    }
+
+        const resultado = await pool.query(query, params);
         res.json(resultado.rows);
     } catch (err) {
         res.status(500).send("Error al consultar auditoría");
+    }
+});
+
+app.get('/api/auditoria/usuarios', verificarSesion, async (req, res) => {
+    try {
+        const resultado = await pool.query('SELECT DISTINCT nombre_usuario FROM auditoria WHERE nombre_usuario IS NOT NULL ORDER BY nombre_usuario');
+        res.json(resultado.rows.map(r => r.nombre_usuario));
+    } catch (err) {
+        res.status(500).send("Error al obtener usuarios de auditoría");
     }
 });
 
