@@ -2656,8 +2656,8 @@ function descargarExcel(html, nombreArchivo) {
             h1 { color: #1e293b; font-size: 20px; margin-bottom: 5px; }
             .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; }
             table { border-collapse: collapse; font-size: 11px; }
-            th { background: #1e293b; color: #fff; padding: 10px 8px; font-weight: 600; text-align: center; border: 1px solid #1e293b; white-space: nowrap; }
-            td { padding: 7px 8px; border: 1px solid #e2e8f0; text-align: center; color: #334155; white-space: nowrap; }
+            th { background: #1e293b; color: #fff; padding: 10px 8px; font-weight: 600; text-align: center; vertical-align: middle; border: 1px solid #1e293b; white-space: nowrap; }
+            td { padding: 7px 8px; border: 1px solid #e2e8f0; text-align: left; vertical-align: middle; color: #334155; white-space: nowrap; }
             tr:nth-child(even) { background: #f8fafc; }
             tr:hover { background: #eef2ff; }
             .footer { margin-top: 15px; font-size: 10px; color: #94a3b8; text-align: right; }
@@ -3138,7 +3138,14 @@ function generarExcelAuditoria(soloFiltrados) {
                     if (item.serial_equipo) partes.push(`Serial: ${item.serial_equipo}`);
                     equipo = partes.join(' - ');
                 }
-                filas += `<tr><td>${i+1}</td><td>${item.nombre_usuario || 'N/A'}</td><td style="white-space:nowrap">${new Date(item.fecha).toLocaleString()}</td><td>${opLabel}</td><td>${equipo}</td><td style="white-space:normal;word-break:break-word;max-width:600px">${detalle}</td></tr>`;
+                filas += `<tr>
+                    <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${i+1}</td>
+                    <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${item.nombre_usuario || 'N/A'}</td>
+                    <td align="left" valign="middle" style="white-space:nowrap;text-align:left;vertical-align:middle">${new Date(item.fecha).toLocaleString()}</td>
+                    <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${opLabel}</td>
+                    <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${equipo}</td>
+                    <td align="left" valign="middle" style="white-space:normal;word-break:break-word;max-width:600px;mso-number-format:'\@';text-align:left;vertical-align:middle">${detalle}</td>
+                </tr>`;
             });
             const html = `
                 <h1>REPORTE DE AUDITORÍA</h1>
