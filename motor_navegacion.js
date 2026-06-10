@@ -331,7 +331,7 @@ async function obtenerDatosAuditoria(fechaInicio, fechaFin, operacion = '', usua
             tbody.innerHTML += `
                 <tr>
                     <td>${item.nombre_usuario || 'N/A'}</td>
-                    <td>${new Date(item.fecha).toLocaleString()}</td>
+                    <td>${new Date(item.fecha).toLocaleString('es-VE', { timeZone: 'America/Caracas' })}</td>
                     <td><span style="display:inline-block; background:${badgeColor}; color:white; padding:3px 12px; border-radius:12px; font-size:0.8rem; font-weight:600;">${textoOp}</span></td>
                     <td>${eqColumna}</td>
                     <td>${detalle}</td>
@@ -1051,8 +1051,8 @@ async function abrirInterfazRegistro(tipo, data = null) {
 
                         <div class="grupo-info">
                             <label><i class="fa-solid fa-clock"></i> Trazabilidad</label>
-                            <p><strong>Fecha Registro:</strong> ${e.fecha_registro ? new Date(e.fecha_registro).toLocaleDateString() : 'No registrada'}</p>
-                            <p><strong>Última Modificación:</strong> ${e.fecha_modificacion ? new Date(e.fecha_modificacion).toLocaleString() : 'Sin cambios'}</p>
+                            <p><strong>Fecha Registro:</strong> ${e.fecha_registro ? new Date(e.fecha_registro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas' }) : 'No registrada'}</p>
+                            <p><strong>Última Modificación:</strong> ${e.fecha_modificacion ? new Date(e.fecha_modificacion).toLocaleString('es-VE', { timeZone: 'America/Caracas' }) : 'Sin cambios'}</p>
                         </div>
 
                         <div class="grupo-info full-width">
@@ -2663,7 +2663,7 @@ function descargarExcel(html, nombreArchivo) {
             .footer { margin-top: 15px; font-size: 10px; color: #94a3b8; text-align: right; }
         </style>
     `;
-    const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">${estilos}</head><body>${html}<div class="footer">Generado el ${new Date().toLocaleString()}</div></body></html>`;
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">${estilos}</head><body>${html}<div class="footer">Generado el ${new Date().toLocaleString('es-VE', { timeZone: 'America/Caracas' })}</div></body></html>`;
     const blob = new Blob([fullHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -2999,7 +2999,7 @@ function generarPDFAuditoriaDesdeData(data) {
     doc.setFontSize(14);
     doc.text("REPORTE DE AUDITORÍA", 148, 15, { align: "center" });
     doc.setFontSize(10);
-    doc.text(`Generado: ${new Date().toLocaleString()}`, 148, 22, { align: "center" });
+    doc.text(`Generado: ${new Date().toLocaleString('es-VE', { timeZone: 'America/Caracas' })}`, 148, 22, { align: "center" });
     doc.text(`Total de movimientos: ${data.length}`, 148, 28, { align: "center" });
 
     const body = data.map((item, i) => {
@@ -3049,7 +3049,7 @@ function generarPDFAuditoriaDesdeData(data) {
         return [
             i + 1,
             item.nombre_usuario || 'N/A',
-            new Date(item.fecha).toLocaleString(),
+            new Date(item.fecha).toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
             opLabel,
             equipo,
             detalle
@@ -3141,7 +3141,7 @@ function generarExcelAuditoria(soloFiltrados) {
                 filas += `<tr>
                     <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${i+1}</td>
                     <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${item.nombre_usuario || 'N/A'}</td>
-                    <td align="left" valign="middle" style="white-space:nowrap;text-align:left;vertical-align:middle">${new Date(item.fecha).toLocaleString()}</td>
+                    <td align="left" valign="middle" style="white-space:nowrap;text-align:left;vertical-align:middle">${new Date(item.fecha).toLocaleString('es-VE', { timeZone: 'America/Caracas' })}</td>
                     <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${opLabel}</td>
                     <td align="left" valign="middle" style="text-align:left;vertical-align:middle">${equipo}</td>
                     <td align="left" valign="middle" style="white-space:normal;word-break:break-word;max-width:600px;mso-number-format:'\@';text-align:left;vertical-align:middle">${detalle}</td>

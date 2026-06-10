@@ -227,8 +227,8 @@ app.get('/api/equipos',verificarSesion, async (req, res) => {
                 e.estado,
                 e.tipo,
                 e.observacion AS observaciones,
-                e.fecha_registro,
-                e.fecha_modificacion,
+                e.fecha_registro AT TIME ZONE 'Europe/Paris' AT TIME ZONE 'America/Caracas' AS fecha_registro,
+                e.fecha_modificacion AT TIME ZONE 'Europe/Paris' AT TIME ZONE 'America/Caracas' AS fecha_modificacion,
                 c.nombre AS clase,
                 d.nombre AS departamento,
                 d.centro_costo,
@@ -636,7 +636,7 @@ app.get('/api/auditoria',verificarSesion, async (req, res) => {
         let query = `
         SELECT 
             id, operacion, id_equipo, nombre_usuario,
-            fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas' AS fecha,
+            fecha AT TIME ZONE 'Europe/Paris' AT TIME ZONE 'America/Caracas' AS fecha,
             fmo, serial_equipo, marca_equipo, modelo_equipo, clase_equipo, tipo_equipo,
             campo_modificado, valor_anterior, valor_nuevo
         FROM auditoria
