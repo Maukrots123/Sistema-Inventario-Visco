@@ -51,6 +51,7 @@ async function cambiarSeccion(nombreSeccion, elemento) {
             // FILTRO DE SEGURIDAD: Validamos si el rol activo es administrador
             if (String(window.usuarioRol).toLowerCase() === 'admin') {
                 cargarInterfazConfig(contenedor);
+                actualizarBadgeSolicitudes();
             } else {
                 // Si no es admin, bloqueamos la vista e informamos al usuario
                 Swal.fire({
@@ -2215,6 +2216,15 @@ function cargarInterfazConfig(contenedor) {
                 <i class="fa-solid fa-user-minus"></i> Eliminar Usuario
             </button>
         </div>
+        <div class="card-config" style="${estiloTarjetaFlex}">
+            <div>
+                <h4>Restablecer Contraseña</h4>
+                <p>Atender solicitudes de usuarios que olvidaron su clave.</p>
+            </div>
+            <button class="btn-secundario" onclick="abrirModalRestablecerClave()" style="background: #9b59b6; ${estiloBotonAlineado}">
+                <i class="fa-solid fa-key"></i> Restablecer Clave <span id="badge-solicitudes" style="display:none; background:#e74c3c; color:white; border-radius:50%; padding:2px 8px; margin-left:8px; font-size:0.8rem;"></span>
+            </button>
+        </div>
     `;
 
     contenedor.innerHTML = `
@@ -3189,6 +3199,119 @@ function capitalizarPrimera(input) {
         return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
     });
     input.value = capitalizadas.join(' ');
+}
+
+async function actualizarBadgeSolicitudes() {
+    try {
+        const resp = await fetch('/api/solicitudes-cambio');
+        if (!resp.ok) return;
+        const solicitudes = await resp.json();
+        const badge = document.getElementById('badge-solicitudes');
+        if (badge) {
+            if (solicitudes.length > 0) {
+                badge.style.display = 'inline';
+                badge.textContent = solicitudes.length;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        // Silencio
+    }
+}
+
+async function abrirModalRestablecerClave() {
+    try {
+        const resp = await fetch('/api/solicitudes-cambio');
+        if (!resp.ok) throw new Error('No se pudieron obtener las solicitudes.');
+        const solicitudes = await resp.json();
+
+        if (!solicitudes.length) {
+            actualizarBadgeSolicitudes();
+            return Swal.fire({
+                icon: 'info',
+                title: 'Sin solicitudes',
+                text: 'No hay solicitudes de restablecimiento de contraseña pendientes.',
+                confirmButtonColor: '#3498db'
+            });
+        }
+
+        let html = `<div style="text-align:left; font-size:0.9rem;">
+            <p style="margin-bottom:12px; color:#7f8c8d;">Solicitudes pendientes de restablecimiento:</p>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr style="background:#f0f0f0;">
+                    <th style="padding:8px; border:1px solid #ddd;">Usuario</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Fecha</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Acción</th>
+                </tr>`;
+
+        for (const s of solicitudes) {
+            const fecha = new Date(s.fecha_solicitud).toLocaleString('es-VE', { timeZone: 'America/Caracas' });
+            html += `<tr>
+                <td style="padding:8px; border:1px solid #ddd;">${s.usuario_nombre}</td>
+                <td style="padding:8px; border:1px solid #ddd;">${fecha}</td>
+                <td style="padding:8px; border:1px solid #ddd; text-align:center;">
+                    <button class="btn-aprobar-solicitud" data-id="${s.id}" style="background:#2ecc71; color:white; border:none; padding:6px 14px; border-radius:4px; cursor:pointer;">
+                        <i class="fa-solid fa-check"></i> Aprobar
+                    </button>
+                </td>
+            </tr>`;
+        }
+
+        html += `</table></div>`;
+
+        const { isDismissed } = await Swal.fire({
+            title: '<i class="fa-solid fa-key" style="color:#9b59b6;"></i> Solicitudes de Restablecimiento',
+            html: html,
+            showCancelButton: true,
+            cancelButtonText: 'Cerrar',
+            confirmButtonText: ' ', 
+            showConfirmButton: false,
+            didOpen: () => {
+                document.querySelectorAll('.btn-aprobar-solicitud').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.currentTarget.dataset.id;
+                        e.currentTarget.disabled = true;
+                        e.currentTarget.textContent = 'Aprobando...';
+                        try {
+                            const resp = await fetch(`/api/solicitudes-cambio/${id}/aprobar`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                            if (!resp.ok) throw new Error('Error al aprobar');
+                            const data = await resp.json();
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Clave Restablecida',
+                                html: `
+                                    <p>Usuario: <strong>${data.usuario}</strong></p>
+                                    <p>Contraseña temporal: <strong style="font-size:1.3rem; color:#e74c3c;">${data.tempPassword}</strong></p>
+                                    <p style="margin-top:12px; font-size:0.85rem; color:#7f8c8d;">
+                                        <i class="fa-solid fa-exclamation-triangle" style="color:#f39c12;"></i>
+                                        Entrégala al usuario en persona. La clave caduca al primer inicio de sesión.
+                                    </p>
+                                `,
+                                confirmButtonColor: '#3498db',
+                                confirmButtonText: 'Copiar y Cerrar'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    navigator.clipboard.writeText(data.tempPassword).catch(() => {});
+                                }
+                                actualizarBadgeSolicitudes();
+                            });
+                        } catch (err) {
+                            Swal.fire('Error', err.message, 'error');
+                        }
+                    });
+                });
+            }
+        });
+
+        if (isDismissed) actualizarBadgeSolicitudes();
+    } catch (error) {
+        console.error("Error al abrir modal restablecer:", error);
+        Swal.fire('Error', error.message || 'No se pudo cargar el listado.', 'error');
+    }
 }
 
 function cerrarSesion() {

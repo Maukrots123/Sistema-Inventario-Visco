@@ -119,7 +119,8 @@ app.get('/api/verificar-sesion', (req, res) => {
         res.json({ 
             logueado: true, 
             rol: req.session.rol,
-            username: req.session.usuarioNombre || null
+            username: req.session.usuarioNombre || null,
+            debeCambiarClave: req.session.debeCambiarClave || false
         });
     } else {
         res.status(401).json({ logueado: false });
@@ -184,16 +185,24 @@ app.post('/api/login', async (req, res) => {
         const esValida = await bcrypt.compare(password, usuario.clave);
 
         if (esValida) {
+            if (usuario.debe_cambiar_clave) {
+                req.session.debeCambiarClave = true;
+                req.session.usuarioId = usuario.id;
+                req.session.usuarioNombre = usuario.usuario_nombre;
+                return res.status(200).json({
+                    mensaje: "Debes cambiar tu contraseña",
+                    debeCambiarClave: true,
+                    username: usuario.usuario_nombre
+                });
+            }
+
             req.session.usuarioId = usuario.id;
             req.session.rol = usuario.rol; 
             req.session.usuarioNombre = usuario.usuario_nombre;
 
-            // Lógica de "Recordar siempre" condicional:
             if (recordar) {
-                // Si el usuario marcó la casilla, la cookie vive 1 año
                 req.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 365; 
             } else {
-                // Si no la marcó, la sesión expira al cerrar el navegador
                 req.session.cookie.maxAge = null;
             }
             
@@ -208,6 +217,105 @@ app.post('/api/login', async (req, res) => {
     } catch (err) {
         console.error("Error en login:", err.message);
         res.status(500).send("Error interno del servidor");
+    }
+});
+
+// --- ENDPOINTS DE RESTABLECIMIENTO DE CONTRASEÑA ---
+
+app.post('/api/solicitar-restablecimiento', async (req, res) => {
+    const { username } = req.body;
+    try {
+        const existe = await pool.query('SELECT 1 FROM usuario WHERE usuario_nombre = $1', [username]);
+        if (existe.rows.length > 0) {
+            await pool.query(
+                `INSERT INTO solicitud_cambio_clave (usuario_nombre, estado) VALUES ($1, 'pendiente')`,
+                [username]
+            );
+        }
+        res.json({ mensaje: 'Si el usuario existe, se ha enviado una solicitud al administrador.' });
+    } catch (err) {
+        console.error("Error al solicitar restablecimiento:", err.message);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+app.get('/api/solicitudes-cambio', verificarSesion, esAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, usuario_nombre, fecha_solicitud, estado 
+             FROM solicitud_cambio_clave 
+             WHERE estado = 'pendiente' 
+             ORDER BY fecha_solicitud DESC`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Error al listar solicitudes:", err.message);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+app.post('/api/solicitudes-cambio/:id/aprobar', verificarSesion, esAdmin, async (req, res) => {
+    try {
+        const solicitud = await pool.query(
+            'SELECT * FROM solicitud_cambio_clave WHERE id = $1 AND estado = $2',
+            [req.params.id, 'pendiente']
+        );
+        if (solicitud.rows.length === 0) {
+            return res.status(404).json({ error: 'Solicitud no encontrada o ya fue atendida.' });
+        }
+
+        const tempPassword = 'Temp' + Math.floor(1000 + Math.random() * 9000) + '!';
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
+
+        await pool.query(
+            'UPDATE usuario SET clave = $1, debe_cambiar_clave = true WHERE usuario_nombre = $2',
+            [hashedPassword, solicitud.rows[0].usuario_nombre]
+        );
+
+        await pool.query(
+            `UPDATE solicitud_cambio_clave 
+             SET estado = 'aprobada', fecha_atendida = NOW(), atendido_por = $1 
+             WHERE id = $2`,
+            [req.session.usuarioId, req.params.id]
+        );
+
+        res.json({ 
+            mensaje: 'Contraseña restablecida exitosamente',
+            tempPassword: tempPassword,
+            usuario: solicitud.rows[0].usuario_nombre
+        });
+    } catch (err) {
+        console.error("Error al aprobar solicitud:", err.message);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+app.post('/api/cambiar-clave', async (req, res) => {
+    const { claveNueva } = req.body;
+    if (!req.session.debeCambiarClave || !req.session.usuarioId) {
+        return res.status(403).json({ error: 'No autorizado' });
+    }
+    if (!claveNueva || claveNueva.length < 6) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+    }
+    try {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(claveNueva, saltRounds);
+        await pool.query(
+            'UPDATE usuario SET clave = $1, debe_cambiar_clave = false WHERE id = $2',
+            [hashedPassword, req.session.usuarioId]
+        );
+        req.session.destroy((err) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al cerrar sesión' });
+            }
+            res.clearCookie('connect.sid');
+            res.json({ mensaje: 'Clave cambiada. Inicia sesión de nuevo.' });
+        });
+    } catch (err) {
+        console.error("Error al cambiar clave:", err.message);
+        res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
@@ -1105,6 +1213,6 @@ app.put('/api/usuarios/ascender/:cedula', verificarSesion, async (req, res) => {
 
 // Iniciar servidor en el puerto 3000
 const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.listen(PORT, '10.200.18.113', () => {
+    console.log(`Servidor corriendo en http://10.200.18.113:${PORT}`);
 });

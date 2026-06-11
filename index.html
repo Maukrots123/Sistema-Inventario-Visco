@@ -17,7 +17,10 @@
             return res.json();
         })
         .then(data => {
-            // Nota: Cambiado data.username a data.usuario_nombre para coincidir con tu tabla de PostgreSQL
+            if (data.debeCambiarClave) {
+                window.location.href = 'login.html';
+                return;
+            }
             window.usuarioRol = data.rol || 'usuario';
             window.usuarioNombre = data.usuario_nombre || data.username || 'Usuario';
 

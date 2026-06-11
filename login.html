@@ -23,6 +23,12 @@
                 <span id="texto-error">Usuario o contraseña incorrectos.</span>
             </div>
 
+            <div id="mensaje-exito" style="display: none; background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 12px; border-radius: 5px; margin-bottom: 20px; font-size: 0.9rem; text-align: left;">
+                <i class="fa-solid fa-check-circle" style="margin-right: 8px;"></i>
+                <span id="texto-exito"></span>
+            </div>
+
+            <!-- FORMULARIO DE LOGIN -->
             <form class="formulario-acceso" id="form-login">
                 <div class="grupo-entrada">
                     <label for="usuario">Usuario o Correo</label>
@@ -44,13 +50,61 @@
                     <label class="recordarme">
                         <input type="checkbox" id="recordarme"> Recordar sesión
                     </label>
-                    <a href="#" class="olvido-clave">¿Olvidaste tu contraseña?</a>
+                    <a href="#" id="link-olvido-clave" class="olvido-clave">¿Olvidaste tu contraseña?</a>
                 </div>
 
-                <button type="submit" class="boton-entrar">
+                <button type="submit" class="boton-entrar" id="btn-entrar">
                     Entrar al Sistema
                 </button>
             </form>
+
+            <!-- FORMULARIO DE SOLICITUD DE RESTABLECIMIENTO -->
+            <div id="form-solicitar-restablecimiento" style="display: none;">
+                <h4 style="margin-bottom: 15px; text-align: center;">¿Olvidaste tu contraseña?</h4>
+                <p style="font-size: 0.85rem; color: #7f8c8d; text-align: center; margin-bottom: 15px;">
+                    Ingresa tu usuario y enviaremos una solicitud al administrador.
+                </p>
+                <div class="grupo-entrada">
+                    <label for="usuario-solicitud">Usuario</label>
+                    <div class="campo-icono">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="usuario-solicitud" placeholder="Ej: mauricio.a" required>
+                    </div>
+                </div>
+                <button type="button" class="boton-entrar" id="btn-enviar-solicitud" style="margin-top: 10px;">
+                    Enviar Solicitud
+                </button>
+                <p style="text-align: center; margin-top: 12px;">
+                    <a href="#" id="link-volver-login" style="color: #3498db; text-decoration: none; font-size: 0.85rem;">
+                        ← Volver al inicio de sesión
+                    </a>
+                </p>
+            </div>
+
+            <!-- FORMULARIO DE CAMBIO FORZADO DE CONTRASEÑA -->
+            <div id="form-cambiar-clave" style="display: none;">
+                <h4 style="margin-bottom: 15px; text-align: center;">Debes cambiar tu contraseña</h4>
+                <p style="font-size: 0.85rem; color: #7f8c8d; text-align: center; margin-bottom: 15px;">
+                    Por seguridad, debes establecer una nueva contraseña antes de continuar.
+                </p>
+                <div class="grupo-entrada">
+                    <label for="clave-nueva">Nueva Contraseña</label>
+                    <div class="campo-icono">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="clave-nueva" placeholder="Mínimo 6 caracteres" required>
+                    </div>
+                </div>
+                <div class="grupo-entrada">
+                    <label for="clave-confirmar">Confirmar Contraseña</label>
+                    <div class="campo-icono">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="clave-confirmar" placeholder="Repite la contraseña" required>
+                    </div>
+                </div>
+                <button type="button" class="boton-entrar" id="btn-cambiar-clave" style="margin-top: 10px;">
+                    Cambiar Contraseña
+                </button>
+            </div>
 
             <footer class="pie-login">
                 <p>&copy; 2026 Control de Inventario FMO</p>
