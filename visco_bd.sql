@@ -1,1 +1,1 @@
-SELECT * FROM responsable
+DROP TABLE IF EXISTS jefe_turno;
